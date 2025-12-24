@@ -1,0 +1,89 @@
+.table__management .table-responsive {
+  -webkit-overflow-scrolling: touch;
+  /* smooth scrolling on mobile */
+}
+
+.table__management table td,
+.table__management table th {
+  max-width: 250px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.table__management table .btn__edit {
+  color: rgb(53, 122, 53);
+  transition: 0.3s;
+  border: none;
+}
+
+.table__management table .btn__edit:hover {
+  color: rgb(21, 206, 21);
+}
+
+.table__management table .btn__delete {
+  color: rgb(185, 13, 13);
+  transition: 0.3s;
+  border: none;
+}
+
+.table__management table .btn__delete:hover {
+  color: rgb(250, 96, 57);
+}
+
+.table__management table .btn__detail {
+  color: rgb(27, 13, 185);
+  transition: 0.3s;
+  border: none;
+}
+
+.table__management table .btn__detail:hover {
+  color: rgb(57, 115, 250);
+}
+
+.table__management table .btn__show {
+  color: blue;
+  transition: 0.3s;
+  border: none;
+}
+
+.table__management table .btn__show:hover {
+  color: rgb(25, 97, 25);
+}
+
+.table__management table .btn__approve {
+  color: rgb(0, 128, 0); /* xanh lá */
+  transition: 0.3s;
+  border: none;
+}
+
+.table__management table .btn__approve:hover {
+  color: rgb(50, 205, 50); /* xanh sáng hơn */
+}
+
+.table__management table .btn__reject {
+  color: rgb(178, 34, 34); /* đỏ đậm */
+  transition: 0.3s;
+  border: none;
+}
+
+.table__management table .btn__reject:hover {
+  color: rgb(255, 69, 58); /* đỏ cam khi hover */
+}
+
+
+.table__management .pagination .page-item .page-link {
+  padding: 4px 10px;
+}
+
+.table__management .pagination .page-item.active .page-link {
+  color: #ffffff;
+}
+
+.table__management table .expand-row li {
+  border-bottom: 1px dashed rgba(128, 128, 128, 0.288);
+}
+
+.table__management table .expand-row li:last-child {
+  border-bottom: none;
+}

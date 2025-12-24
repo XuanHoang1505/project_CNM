@@ -1,0 +1,15 @@
+export const COLOR_MAP = {
+    black: "#000000",
+    white: "#FFFFFF",
+    red: "#FF0000",
+    blue: "#0000FF",
+    green: "#00FF00",
+    yellow: "#FFFF00",
+    gray: "#808080",
+    brown: "#8B4513",
+    beige: "#F5F5DC",
+    pink: "#FFC0CB",
+    orange: "#FFA500",
+    purple: "#800080",
+    navy: "#000080",
+};
