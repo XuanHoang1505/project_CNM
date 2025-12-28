@@ -2,21 +2,22 @@
 
 namespace App\Models;
 
-use Illuminate\Notifications\Notifiable;
-use MongoDB\Laravel\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
 {
-    use Notifiable;
-    protected $connection = 'mongodb';
-    protected $collection = 'orders';
+    protected $table = 'orders';
 
     protected $fillable = [
         'order_code',
         'user_id',
-        'customer_info',
-        'shipping_address',
-        'items',
+        'full_name',
+        'email',
+        'phone',
+        'house_number',
+        'province',
+        'ward',
+        'note',
         'payment_method',
         'payment_status',
         'order_status',
@@ -24,26 +25,27 @@ class Order extends Model
         'discount',
         'delivery_fee',
         'total',
-        'vnpay_transaction',
-        'note',
-        'created_at',
-        'updated_at'
     ];
 
     protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'subtotal' => 'integer',
+        'discount' => 'integer',
+        'delivery_fee' => 'integer',
+        'total' => 'integer',
     ];
 
-    // Relationships
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class);
     }
 
-    public function routeNotificationForMail()
+    public function items()
     {
-        return $this->customer_info['email'] ?? null;
+        return $this->hasMany(OrderItem::class);
     }
 
+    public function payment()
+    {
+        return $this->hasOne(Payment::class);
+    }
 }
