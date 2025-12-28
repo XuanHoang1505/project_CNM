@@ -95,7 +95,20 @@ function ShopPage() {
         );
       }
 
-      setProducts(result.data || []);
+      //LẤY ẢNH PRIMARY
+      const productsWithPrimaryImage = (result.data || []).map((product) => {
+        const primaryImage =
+          product.images?.find((img) => img.is_primary === 1) ||
+          product.images?.[0] ||
+          null;
+
+        return {
+          ...product,
+          primaryImage, // 👉 chỉ 1 ảnh dùng cho UI
+        };
+      });
+
+      setProducts(productsWithPrimaryImage);
       setPagination((prev) => ({
         ...prev,
         total: result.total || 0,
@@ -107,6 +120,7 @@ function ShopPage() {
       setLoading(false);
     }
   };
+
 
   console.log(products);
 
@@ -240,7 +254,7 @@ function ShopPage() {
               <input
                 type="checkbox"
                 checked={tempFilters.categories.includes(category.slug)}
-                onChange={() => {}}
+                onChange={() => { }}
                 className="w-4 h-4 cursor-pointer"
               />
               <span
@@ -287,11 +301,10 @@ function ShopPage() {
             <button
               key={index}
               onClick={() => toggleFilter("colors", color.name)}
-              className={`w-9 h-9 rounded-full border-2 hover:scale-110 transition-transform cursor-pointer relative ${
-                tempFilters.colors.includes(color.name)
-                  ? "ring-2 ring-black ring-offset-2"
-                  : ""
-              }`}
+              className={`w-9 h-9 rounded-full border-2 hover:scale-110 transition-transform cursor-pointer relative ${tempFilters.colors.includes(color.name)
+                ? "ring-2 ring-black ring-offset-2"
+                : ""
+                }`}
               style={{
                 backgroundColor: color.hex,
                 borderColor: color.hex === "#FFFFFF" ? "#e5e7eb" : color.hex,
@@ -300,11 +313,10 @@ function ShopPage() {
             >
               {tempFilters.colors.includes(color.name) && (
                 <span
-                  className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${
-                    color.hex === "#FFFFFF" || color.hex === "#FCD34D"
-                      ? "text-black"
-                      : "text-white"
-                  }`}
+                  className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${color.hex === "#FFFFFF" || color.hex === "#FCD34D"
+                    ? "text-black"
+                    : "text-white"
+                    }`}
                 >
                   ✓
                 </span>
@@ -322,11 +334,10 @@ function ShopPage() {
             <button
               key={index}
               onClick={() => toggleFilter("sizes", size)}
-              className={`px-4 py-2 rounded-full text-sm transition-colors ${
-                tempFilters.sizes.includes(size)
-                  ? "bg-black text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-full text-sm transition-colors ${tempFilters.sizes.includes(size)
+                ? "bg-black text-white"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               {size}
             </button>
@@ -347,7 +358,7 @@ function ShopPage() {
               <input
                 type="checkbox"
                 checked={tempFilters.dressStyles.includes(style.slug)}
-                onChange={() => {}}
+                onChange={() => { }}
                 className="w-4 h-4 cursor-pointer"
               />
               <span
@@ -423,65 +434,65 @@ function ShopPage() {
               appliedFilters.colors.length > 0 ||
               appliedFilters.sizes.length > 0 ||
               appliedFilters.dressStyles.length > 0) && (
-              <div className="mb-4 flex flex-wrap gap-2">
-                {appliedFilters.categories.map((cat) => (
-                  <span
-                    key={cat}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                  >
-                    {cat}
-                    <button
-                      onClick={() => removeFilter("categories", cat)}
-                      className="hover:text-red-600"
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {appliedFilters.categories.map((cat) => (
+                    <span
+                      key={cat}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {appliedFilters.colors.map((color) => (
-                  <span
-                    key={color}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                  >
-                    {color}
-                    <button
-                      onClick={() => removeFilter("colors", color)}
-                      className="hover:text-red-600"
+                      {cat}
+                      <button
+                        onClick={() => removeFilter("categories", cat)}
+                        className="hover:text-red-600"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {appliedFilters.colors.map((color) => (
+                    <span
+                      key={color}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {appliedFilters.sizes.map((size) => (
-                  <span
-                    key={size}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                  >
-                    {size}
-                    <button
-                      onClick={() => removeFilter("sizes", size)}
-                      className="hover:text-red-600"
+                      {color}
+                      <button
+                        onClick={() => removeFilter("colors", color)}
+                        className="hover:text-red-600"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {appliedFilters.sizes.map((size) => (
+                    <span
+                      key={size}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
-                {appliedFilters.dressStyles.map((style) => (
-                  <span
-                    key={style}
-                    className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
-                  >
-                    {style}
-                    <button
-                      onClick={() => removeFilter("dressStyles", style)}
-                      className="hover:text-red-600"
+                      {size}
+                      <button
+                        onClick={() => removeFilter("sizes", size)}
+                        className="hover:text-red-600"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                  {appliedFilters.dressStyles.map((style) => (
+                    <span
+                      key={style}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 rounded-full text-sm"
                     >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
+                      {style}
+                      <button
+                        onClick={() => removeFilter("dressStyles", style)}
+                        className="hover:text-red-600"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
 
             {/* Products Grid */}
             <Spin spinning={loading}>
@@ -496,7 +507,7 @@ function ShopPage() {
                   >
                     <div className="aspect-square bg-gray-100 overflow-hidden">
                       <img
-                        src={product.images[0]}
+                        src={product.primaryImage.image_url}
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />

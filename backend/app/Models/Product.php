@@ -69,4 +69,11 @@ class Product extends Model
     {
         return $q->where('is_featured', true);
     }
+
+    public function primaryImage()
+    {
+        return $this->hasOne(ProductImage::class)
+            ->where('is_primary', 1);
+    }
+    
 }

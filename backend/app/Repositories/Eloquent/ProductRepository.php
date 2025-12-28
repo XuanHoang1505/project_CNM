@@ -3,6 +3,7 @@
 namespace App\Repositories\Eloquent;
 
 use App\Http\Resources\ProductResource;
+use App\Models\Category;
 use App\Models\Product;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 
@@ -10,7 +11,11 @@ class ProductRepository implements ProductRepositoryInterface
 {
     public function getAll(int $page = 1, int $perPage = 15)
     {
-        return Product::paginate($perPage, ['*'], 'page', $page);
+       return Product::with(['images:id,product_id,image_url,is_primary'])
+        ->select('id','name','slug','price','compare_price','is_featured')
+        ->where('is_active', true)
+        ->paginate($perPage, ['*'], 'page', $page);
+
     }
 
     public function findById(string $id)
@@ -114,41 +119,67 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function getNew(int $limit = 4)
     {
-        // Sắp xếp theo created_at mới nhất
-        return Product::where('is_active', true)
-            ->orderBy('created_at', 'desc')
+        return Product::with([
+                'primaryImage:id,product_id,image_url'
+            ])
+            ->select(
+                'id',
+                'name',
+                'slug',
+                'price',
+                'compare_price',
+                'is_featured',
+                'created_at'
+            )
+            ->where('is_active', true)
+            ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
     }
+
 
     public function getBestseller(int $limit = 4)
     {
-        // Lấy sản phẩm featured hoặc sản phẩm có giá compare_price cao
-        // (sản phẩm giảm giá thường bán chạy)
-        return Product::where('is_active', true)
-            ->where(function($query) {
+        return Product::with([
+                'primaryImage:id,product_id,image_url'
+            ])
+            ->select(
+                'id',
+                'name',
+                'slug',
+                'price',
+                'compare_price',
+                'is_featured',
+                'created_at'
+            )
+            ->where('is_active', true)
+            ->where(function ($query) {
                 $query->where('is_featured', true)
-                    ->orWhereNotNull('compare_price');
+                    ->orWhere(function ($q) {
+                        $q->whereNotNull('compare_price')
+                            ->whereColumn('compare_price', '>', 'price');
+                    });
             })
-            ->orderBy('is_featured', 'desc')
-            ->orderBy('created_at', 'desc')
+            ->orderByDesc('is_featured')
+            ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
     }
 
+
     public function getAllCategories()
     {
-        return Product::raw(function($collection) {
-            return $collection->distinct('category');
-        });
+        return Category::select('id', 'name', 'slug')->get();
     }
 
     public function getAllDressStyles()
     {
-        return Product::raw(function($collection) {
-            return $collection->distinct('dressStyle');
-        });
+        return Product::whereNotNull('dress_style')
+            ->where('is_active', true)
+            ->distinct()
+            ->pluck('dress_style');
     }
+
 
     public function getAllBrands()
     {
