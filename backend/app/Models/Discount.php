@@ -2,27 +2,37 @@
 
 namespace App\Models;
 
-use MongoDB\Laravel\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
+use App\Casts\EnumCast;           
+use App\Enums\DiscountType;       
 
 class Discount extends Model
 {
-    protected $connection = 'mongodb';
-    protected $collection = 'discounts';
-    protected $primaryKey = '_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $table = 'discounts';
 
     protected $fillable = [
-        'code',             // Mã giảm giá, ví dụ: SALE50
-        'description',      // Mô tả mã
-        'type',             // percent | fixed
-        'value',            // Giá trị giảm (VD: 10% hoặc 20000 vnđ)
-        'min_order_value',  // Giá trị đơn tối thiểu để áp dụng
-        'max_discount',     // Mức giảm tối đa áp dụng (nếu type = percent)
-        'usage_limit',      // Số lần được phép dùng tổng cộng
-        'used',             // Số lần đã dùng
-        'start_date',       // ISODate hoặc string datetime
-        'end_date',         // ISODate hoặc string datetime
-        'is_active',        // true / false
+        'code',
+        'description',
+        'type',
+        'value',
+        'min_order_value',
+        'max_discount',
+        'usage_limit',
+        'used',
+        'start_date',
+        'end_date',
+        'is_active',
+    ];
+
+    protected $casts = [
+        'type' => EnumCast::class . ':' . DiscountType::class,
+        'is_active' => 'boolean',
+        'start_date' => 'datetime',
+        'end_date' => 'datetime',
+        'value' => 'integer',
+        'max_discount' => 'integer',
+        'min_order_value' => 'integer',
+        'usage_limit' => 'integer',
+        'used' => 'integer',
     ];
 }

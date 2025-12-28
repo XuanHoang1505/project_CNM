@@ -2,12 +2,11 @@
 
 namespace App\Models;
 
-use MongoDB\Laravel\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
 
 class ShippingFee extends Model
 {
-    protected $connection = 'mongodb';
-    protected $collection = 'shipping_fees';
+    protected $table = 'shipping_fees';
 
     protected $fillable = [
         'province_code',
@@ -15,10 +14,10 @@ class ShippingFee extends Model
         'ward_code',
         'ward_name',
         'fee',
-        'note'
+        'note',
     ];
 
     protected $casts = [
-        'fee' => 'double',
+        'fee' => 'integer',
     ];
 }

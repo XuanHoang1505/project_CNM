@@ -2,44 +2,71 @@
 
 namespace App\Models;
 
-use MongoDB\Laravel\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
-    protected $connection = 'mongodb';
-    protected $collection = 'products';
-    protected $primaryKey = '_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    use SoftDeletes;
+
+    protected $table = 'products';
 
     protected $fillable = [
         'name',
         'slug',
         'description',
-        'category',        // Object
-        'brand',           // Object
+        'category_id',
+        'brand_id',
         'price',
         'compare_price',
-        'cost_price',
-        'sku',
-        'barcode',
-        'stock',
-        'images',          // Array of objects
-        'variants',        // Array of objects
-        'tags',
         'material',
         'care_instructions',
-        'weight',
-        'dimensions',
-        'meta_title',
-        'meta_description',
-        'meta_keywords',
+        'dress_style',
         'is_featured',
         'is_active',
-        'is_new',
-        'is_bestseller',
-        'stats',           // Object with rating, views, etc
     ];
 
+    protected $casts = [
+        'price' => 'integer',
+        'compare_price' => 'integer',
+        'is_featured' => 'boolean',
+        'is_active' => 'boolean',
+    ];
 
+    /* ================= RELATIONSHIPS ================= */
+
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    public function brand()
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function images()
+    {
+        return $this->hasMany(ProductImage::class);
+    }
+
+    public function variants()
+    {
+        return $this->hasMany(ProductVariant::class);
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function scopeActive($q)
+    {
+        return $q->where('is_active', true);
+    }
+
+    public function scopeFeatured($q)
+    {
+        return $q->where('is_featured', true);
+    }
 }

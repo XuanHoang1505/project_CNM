@@ -2,78 +2,81 @@
 
 namespace App\Models;
 
-use Illuminate\Auth\Authenticatable;
-use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
-use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
-use Illuminate\Foundation\Auth\Access\Authorizable;
+use App\Casts\EnumCast;
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use MongoDB\Laravel\Eloquent\Model;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Model implements AuthenticatableContract, AuthorizableContract, JWTSubject
+class User extends Authenticatable implements JWTSubject
 {
-    use Authenticatable, Authorizable, Notifiable;
+    use Notifiable;
 
-    protected $connection = 'mongodb';
-    protected $collection = 'users';
+    protected $table = 'users';
 
     protected $fillable = [
         'email',
+        'email_verified_at',
         'password',
-        'fullName',
-        'status',
-        'role',
-        'phoneNumber',
-        'gender',
+        'full_name',
         'avatar',
-        'isVerified',
+        'gender',
+        'phone_number',
+        'role',
+        'status',
+        'is_verified',
     ];
 
     protected $hidden = [
         'password',
+        // 'remember_token',
     ];
 
-    /**
-     * Check if user is admin
-     */
-    public function isAdmin(): bool
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'gender' => 'boolean',
+        'is_verified' => 'boolean',
+        'role' => EnumCast::class . ':' . UserRole::class,
+        'status' => EnumCast::class . ':' . UserStatus::class,
+    ];
+
+    /* ================= RELATIONSHIPS ================= */
+
+    public function orders()
     {
-        return $this->role === 'ADMIN';
+        return $this->hasMany(Order::class);
     }
 
-    /**
-     * Get the identifier that will be stored in the subject claim of the JWT.
-     */
+    public function reviews()
+    {
+        return $this->hasMany(Review::class);
+    }
+
+    public function wishlist()
+    {
+        return $this->hasOne(Wishlist::class);
+    }
+
+    /* ================= HELPERS ================= */
+
+    public function isAdmin(): bool
+    {
+        return $this->role === UserRole::ADMIN;
+    }
+
+    /* ================= JWT ================= */
+
     public function getJWTIdentifier()
     {
         return $this->getKey();
     }
 
-    /**
-     * Return a key value array, containing any custom claims to be added to the JWT.
-     */
     public function getJWTCustomClaims()
     {
         return [
             'role' => $this->role,
             'email' => $this->email,
         ];
-    }
-
-    /**
-     * Get the name of the unique identifier for the user.
-     * MongoDB uses _id instead of id
-     */
-    public function getAuthIdentifierName()
-    {
-        return '_id';
-    }
-
-    /**
-     * Get the password for the user.
-     */
-    public function getAuthPassword()
-    {
-        return $this->password;
     }
 }
