@@ -74,9 +74,15 @@ function LoginModal({
         handleCloseModal();
       }
     } catch (error) {
-      // Backend luôn trả message trong error.response.data.message
-      const errorMessage =
-        error.response?.data?.message || "Đã xảy ra lỗi, vui lòng thử lại sau!";
+
+      let errorMessage = "Đã xảy ra lỗi, vui lòng thử lại sau!";
+
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       toast.error(errorMessage);
     } finally {
       setIsLoading(false);

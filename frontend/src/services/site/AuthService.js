@@ -15,6 +15,7 @@ export const login = async (email, password) => {
       email,
       password,
     });
+    
 
     let token = response.data.access_token; 
 
@@ -22,7 +23,6 @@ export const login = async (email, password) => {
       token = token.replace("Bearer ", "");
     }
 
-    // CHỈ LƯU 1 TOKEN
     if (token) {
       localStorage.setItem("token", token);
     }

@@ -17,7 +17,7 @@ class CreateUserRequest extends BaseRequest
             'fullName' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'role' => 'required|in:ADMIN,USER',
-            'status' => 'sometimes|in:ACTIVE,DISABLED',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ];
     }
 
@@ -34,7 +34,7 @@ class CreateUserRequest extends BaseRequest
             'email.unique' => 'Email đã được sử dụng.',
             'role.required' => 'Vai trò là bắt buộc.',
             'role.in' => 'Vai trò không hợp lệ. Chỉ chấp nhận ADMIN hoặc USER.',
-            'status.in' => 'Trạng thái không hợp lệ. Chỉ chấp nhận ACTIVE hoặc DISABLED.',
+            'status.in' => 'Trạng thái không hợp lệ. Chỉ chấp nhận ACTIVE hoặc INACTIVE.',
         ];
     }
 }
