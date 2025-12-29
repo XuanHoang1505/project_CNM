@@ -22,16 +22,16 @@ const addSubscriber = (callback) => {
 
 // Hàm refresh token riêng (không import từ AuthService)
 const refreshTokenRequest = async (oldToken) => {
-    const response = await axios.post(
-      "http://127.0.0.1:8000/api/auth/refresh",
-      {},
-      {
-        headers: {
-          Authorization: `Bearer ${oldToken}`,
-        },
-      }
-    );
-    return response.data.token; // Lấy token mới từ response
+  const response = await axios.post(
+    "http://127.0.0.1:8000/api/auth/refresh",
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${oldToken}`,
+      },
+    }
+  );
+  return response.data.token; // Lấy token mới từ response
 };
 
 // Interceptor request: tự gắn token vào header
@@ -59,7 +59,9 @@ axiosInstance.interceptors.request.use(
             localStorage.removeItem("token");
             localStorage.removeItem("userDetail");
 
-            toast.warning("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!");
+            toast.warning(
+              "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại!"
+            );
             window.location.href = "/";
             return Promise.reject(error);
           }
@@ -87,6 +89,13 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    const isAuthEndpoint =
+      originalRequest.url?.includes("/auth/login");
+
+    if (isAuthEndpoint) {
+      return Promise.reject(error);
+    }
 
     // Nếu lỗi 401 và chưa retry
     if (error.response?.status === 401 && !originalRequest._retry) {

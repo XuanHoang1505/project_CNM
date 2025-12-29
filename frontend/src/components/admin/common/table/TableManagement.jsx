@@ -84,6 +84,8 @@ const TableManagement = ({
             "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800",
           DISABLED:
             "px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800",
+          INACTIVE:
+            "px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800",
           PENDING:
             "px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-800",
           COMPLETED:
@@ -97,6 +99,7 @@ const TableManagement = ({
           PUBLISHED: "Đã xuất bản",
           REJECTED: "Đã từ chối",
           DISABLED: "Vô hiệu hóa",
+          INACTIVE: "Vô hiệu hóa",
           PENDING: "Đang chờ duyệt",
           COMPLETED: "Hoàn thành",
           EXPIRED: "Đã hết hạn",

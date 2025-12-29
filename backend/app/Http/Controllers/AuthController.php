@@ -127,4 +127,22 @@ class AuthController extends Controller
 
         return response()->json($result, $result['success'] ? 200 : 400);
     }
+
+    public function refreshToken(): JsonResponse
+    {
+        $token = JWTAuth::getToken();
+        $result = $this->userService->refreshToken($token);
+
+        if (!$result['success']) {
+            return response()->json([
+                'message' => $result['message'],
+            ], 401);
+        }
+
+        return response()->json([
+            'success' => $result['success'],
+            'message' => $result['message'],
+            'access_token' => $result['token'],
+        ], 200);
+    }
 }

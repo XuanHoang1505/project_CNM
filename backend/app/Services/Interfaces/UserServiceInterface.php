@@ -17,4 +17,5 @@ interface UserServiceInterface
     public function sendVerifyEmailOtp(string $email): array;
     public function verifyEmailOtp(string $email, string $otp): array;
     public function changePassword(string $email, string $currentPassword, string $newPassword): array;
+    public function refreshToken (string $token): array;
 }
