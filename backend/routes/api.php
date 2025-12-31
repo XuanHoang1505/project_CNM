@@ -92,12 +92,12 @@ Route::post('/reviews', [ReviewController::class, 'createReview']);
 Route::get( '/reviews/{productId}', [ReviewController::class,'getProductByIdProduct']);
 Route::get( '/review/order/{orderId}', [ReviewController::class,'getReviewByOrderId']);
 
-Route::prefix('admin/users')->group(function () {
-    Route::get('/', [UserController::class, 'index']);
-    Route::get('/{user}', [UserController::class, 'show']);
-    Route::post('/', [UserController::class, 'store']);
-    Route::put('/{user}', [UserController::class, 'update']);
-    Route::delete('/{user}', [UserController::class, 'destroy']);
+Route::middleware(['jwt.auth', 'admin'])->prefix('admin')->group(function () {
+    Route::get('users', [UserController::class, 'index']);
+    Route::post('users', [UserController::class, 'store']);
+    Route::get('users/{user}', [UserController::class, 'show']);
+    Route::put('users/{user}', [UserController::class, 'update']);
+    Route::delete('users/{user}', [UserController::class, 'destroy']);
 });
 
 Route::post('/vnpay_payment',[CheckoutController::class,'vnpay_payment']);
