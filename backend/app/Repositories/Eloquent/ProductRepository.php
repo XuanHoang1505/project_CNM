@@ -11,8 +11,7 @@ class ProductRepository implements ProductRepositoryInterface
 {
     public function getAll(int $page = 1, int $perPage = 15)
     {
-       return Product::with(['images:id,product_id,image_url,is_primary'])
-        ->select('id','name','slug','price','compare_price','is_featured')
+       return Product::with(['category', 'brand', 'images', 'variants'])
         ->where('is_active', true)
         ->paginate($perPage, ['*'], 'page', $page);
 
@@ -40,22 +39,30 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function findByCategorySlug(string $categorySlug, int $page = 1, int $perPage = 15)
     {
-        
-        return Product::where('category.slug', $categorySlug)
+        return Product::with(['category', 'brand', 'images', 'variants'])
+            ->whereHas('category', function($q) use ($categorySlug) {
+                $q->where('slug', $categorySlug);
+            })
             ->where('is_active', true)
             ->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function findByCategoryName(string $categoryName, int $perPage = 15)
     {
-        return Product::where('category.name', $categoryName)
+        return Product::whereHas('category', function($q) use ($categoryName) {
+                $q->where('name', $categoryName);
+            })
             ->where('is_active', true)
             ->paginate($perPage);
     }
 
     public function findByParentCategory(string $parentName, int $perPage = 15)
     {
-        return Product::where('category.parent', $parentName)
+        // Note: This assumes categories table has a 'parent' column
+        // If not, you may need to adjust this based on your category structure
+        return Product::whereHas('category', function($q) use ($parentName) {
+                $q->where('parent', $parentName);
+            })
             ->where('is_active', true)
             ->paginate($perPage);
     }
@@ -63,47 +70,67 @@ class ProductRepository implements ProductRepositoryInterface
     public function search(string $keyword, int $page = 1, int $perPage = 12)
     {
         if (empty(trim($keyword))) {
-            return Product::where('is_active', true)
+            return Product::with(['category', 'brand', 'images', 'variants'])
+                ->where('is_active', true)
                 ->paginate($perPage, ['*'], 'page', $page);
         }
 
-        $query = Product::where('is_active', true)
+        $query = Product::with(['category', 'brand', 'images', 'variants'])
+            ->where('products.is_active', true)
             ->where(function($q) use ($keyword) {
-                $q->where('name', 'like', "%{$keyword}%")
-                ->orWhere('description', 'like', "%{$keyword}%")
-                ->orWhere('slug', 'like', "%{$keyword}%")
-                ->orWhere('category.name', 'like', "%{$keyword}%")
-                ->orWhere('brand.name', 'like', "%{$keyword}%");
+                $q->where('products.name', 'like', "%{$keyword}%")
+                ->orWhere('products.description', 'like', "%{$keyword}%")
+                ->orWhere('products.slug', 'like', "%{$keyword}%")
+                ->orWhereHas('category', function($catQuery) use ($keyword) {
+                    $catQuery->where('name', 'like', "%{$keyword}%");
+                })
+                ->orWhereHas('brand', function($brandQuery) use ($keyword) {
+                    $brandQuery->where('name', 'like', "%{$keyword}%");
+                });
             })
-            ->orderBy('created_at', 'desc');
+            ->orderBy('products.created_at', 'desc');
 
         return $query->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function filter(array $filters,int $current, int $perPage = 9)
     {
-        $query = Product::where('is_active', true);
+        // Eager load relationships needed for ProductResource
+        $query = Product::with(['category', 'brand', 'images', 'variants'])
+            ->where('is_active', true);
 
-        if (isset($filters['categories'])) {
-            $query->whereIn('category.slug', $filters['categories']);
+        // Filter by categories - use whereHas to check category relationship
+        if (isset($filters['categories']) && !empty($filters['categories'])) {
+            $query->whereHas('category', function($q) use ($filters) {
+                $q->whereIn('slug', $filters['categories']);
+            });
         }
 
+        // Filter by price range
         if (isset($filters['minPrice']) || isset($filters['maxPrice'])) {
             $minPrice = $filters['minPrice'] ?? 0;
             $maxPrice = $filters['maxPrice'] ?? PHP_INT_MAX;
             $query->whereBetween('price', [$minPrice, $maxPrice]);
         }
 
-        if (isset($filters['colors'])) {
-            $query->whereIn('variants.color', $filters['colors']);
+        // Filter by colors - use whereHas to check if product has variant with matching color
+        if (isset($filters['colors']) && !empty($filters['colors'])) {
+            $query->whereHas('variants', function($q) use ($filters) {
+                $q->whereIn('color', $filters['colors']);
+            });
         }
 
-        if(isset($filters['sizes'])) {
-            $query->whereIn('variants.size', $filters['sizes']);
+        // Filter by sizes - use whereHas to check if product has variant with matching size
+        if (isset($filters['sizes']) && !empty($filters['sizes'])) {
+            $query->whereHas('variants', function($q) use ($filters) {
+                $q->whereIn('size', $filters['sizes']);
+            });
         }
 
-        if(isset($filters['dressStyles'])) {
-            $query->whereIn('dressStyle.slug', $filters['dressStyles']);
+        // Filter by dress styles - direct column filter (dress_style is string column)
+        // Note: Assuming dress_style stores the slug value, if it stores name, need to map slug to name
+        if (isset($filters['dressStyles']) && !empty($filters['dressStyles'])) {
+            $query->whereIn('dress_style', $filters['dressStyles']);
         }
 
         return $query->paginate($perPage, ['*'], 'page', $current);
@@ -177,21 +204,34 @@ class ProductRepository implements ProductRepositoryInterface
         return Product::whereNotNull('dress_style')
             ->where('is_active', true)
             ->distinct()
-            ->pluck('dress_style');
+            ->pluck('dress_style')
+            ->map(function($style) {
+                // Return as object with name and slug for frontend compatibility
+                // Assuming dress_style stores the name, create slug from it
+                return [
+                    'name' => $style,
+                    'slug' => \Illuminate\Support\Str::slug($style)
+                ];
+            })
+            ->values();
     }
 
 
     public function getAllBrands()
     {
-        return Product::raw(function($collection) {
-            return $collection->distinct('brand');
-        });
+        return Product::join('brands', 'products.brand_id', '=', 'brands.id')
+            ->where('products.is_active', true)
+            ->select('brands.id', 'brands.name', 'brands.slug')
+            ->distinct()
+            ->get();
     }
 
     public function getRelatedProducts(string $productId, string $categorySlug, int $limit = 6)
     {
-        return Product::where('category.slug', $categorySlug)
-            ->where('_id', '!=', $productId)
+        return Product::whereHas('category', function($q) use ($categorySlug) {
+                $q->where('slug', $categorySlug);
+            })
+            ->where('id', '!=', $productId)
             ->where('is_active', true)
             ->limit($limit)
             ->get();
