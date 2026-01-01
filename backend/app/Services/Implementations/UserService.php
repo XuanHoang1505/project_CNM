@@ -1,5 +1,8 @@
 <?php
 namespace App\Services\Implementations;
+
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Notifications\SendOtpNotification;
@@ -40,9 +43,10 @@ class UserService implements UserServiceInterface
     {
         $randomPassword = $this->createRandomPassword(8);
         $data['password'] = Hash::make($randomPassword);
-        $data['status'] = 'ACTIVE';
-        $data['role'] = $data['role'] ?? 'USER';
-        $data['isVerified'] = true;
+        $data['status'] = UserStatus::ACTIVE;
+        $data['role'] = $data['role'] ?? UserRole::USER;
+        $data['is_verified'] = true;
+        $data['email_verified_at'] = now();
 
         $user = $this->userRepository->create($data);
 
@@ -91,14 +95,14 @@ class UserService implements UserServiceInterface
 
     public function deleteUser(User $user)
     {
-        return $this->userRepository->delete($user->_id);
+        return $this->userRepository->delete($user->id);
     }
 
     public function register(array $data)
     {
-        $data['isVerified'] = false;
-        $data['role'] = 'USER';
-        $data['status'] = 'ACTIVE';
+        $data['is_verified'] = false;
+        $data['role'] = UserRole::USER;
+        $data['status'] = UserStatus::ACTIVE;
         $data['password'] = Hash::make($data['password']);
 
         $user = $this->userRepository->create($data);
@@ -116,20 +120,6 @@ class UserService implements UserServiceInterface
     {
         $user = $this->userRepository->findByEmail($credentials['email']);
 
-        if($user && $user->status === 'DISABLED') {
-            return [
-                'success' => false,
-                'message' => 'Your account has been disabled. Please contact support.',
-            ];
-        }
-
-        if(!$user->isVerified) {
-            return [
-                'success' => false,
-                'message' => 'Your email is not verified. Please verify your email before logging in.',
-            ];
-        }
-
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return [
                 'success' => false,
@@ -137,6 +127,22 @@ class UserService implements UserServiceInterface
             ];
         }
 
+        // Sau đó mới kiểm tra trạng thái
+        if($user->status === UserStatus::INACTIVE) {
+            return [
+                'success' => false,
+                'message' => 'Your account has been disabled. Please contact support.',
+            ];
+        }
+
+        if(!$user->is_verified) {
+            return [
+                'success' => false,
+                'message' => 'Your email is not verified. Please verify your email before logging in.',
+            ];
+        }
+
+        // Tạo token
         $token = JWTAuth::fromUser($user);
 
         return [
@@ -248,7 +254,8 @@ class UserService implements UserServiceInterface
         }
 
         $this->userRepository->update($user->id, [
-            'isVerified' => true
+            'is_verified' => true,
+            'email_verified_at' => now(),
         ]);
 
         $this->otpService->delete($email);
@@ -413,5 +420,27 @@ class UserService implements UserServiceInterface
             'success' => true,
             'message' => 'Đổi mật khẩu thành công',
         ];
+    }
+    public function refreshToken (string $token): array
+    {
+        try {
+            $newToken = JWTAuth::refresh($token);
+
+            return [
+                'success' => true,
+                'message' => 'Token refreshed successfully',
+                'token' => $newToken,
+            ];
+        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+            return [
+                'success' => false,
+                'message' => 'Invalid token',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Could not refresh token: ' . $e->getMessage(),
+            ];
+        }
     }
 }
