@@ -5,11 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ShippingFee\ShippingFeeRequest;
 use App\Models\ShippingFee;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 
 class ShippingFeeController extends Controller
 {
     // GET /api/shipping-fees
-    // supports ?province_code=&ward_code=&q=&page=&per_page=
     public function index(Request $request)
     {
         $query = ShippingFee::query();
@@ -24,15 +24,17 @@ class ShippingFeeController extends Controller
 
         if ($request->filled('q')) {
             $q = $request->q;
-            $query->where(function($qbc) use ($q) {
-                $qbc->where('province_name', 'like', "%{$q}%")
-                    ->orWhere('ward_name', 'like', "%{$q}%");
+            $query->where(function ($qb) use ($q) {
+                $qb->where('province_name', 'like', "%{$q}%")
+                   ->orWhere('ward_name', 'like', "%{$q}%");
             });
         }
 
-        // pagination optional
         $perPage = (int) $request->get('per_page', 20);
-        $data = $query->orderBy('province_name')->paginate($perPage);
+
+        $data = $query
+            ->orderBy('province_name')
+            ->paginate($perPage);
 
         return response()->json($data);
     }
@@ -40,37 +42,35 @@ class ShippingFeeController extends Controller
     // POST /api/shipping-fees
     public function store(ShippingFeeRequest $request)
     {
-        $payload = $request->validated();
+        try {
+            $fee = ShippingFee::create($request->validated());
 
-        // nếu muốn tránh duplicate theo province+ward, check trước
-        $existing = ShippingFee::where('province_code', $payload['province_code'])
-            ->when(!empty($payload['ward_code']), function($q) use ($payload) {
-                $q->where('ward_code', $payload['ward_code']);
-            })
-            ->first();
-
-        if ($existing) {
             return response()->json([
-                'message' => 'Shipping fee already exists for this province/ward',
-                'data' => $existing
-            ], 409);
+                'message' => 'Created',
+                'data' => $fee
+            ], 201);
+
+        } catch (QueryException $e) {
+            // Duplicate key (province_code + ward_code)
+            if ($e->getCode() == 23000) {
+                return response()->json([
+                    'message' => 'Shipping fee already exists for this province/ward'
+                ], 409);
+            }
+
+            throw $e;
         }
-
-        $fee = ShippingFee::create($payload);
-
-        return response()->json([
-            'message' => 'Created',
-            'data' => $fee
-        ], 201);
     }
 
     // GET /api/shipping-fees/{id}
     public function show($id)
     {
         $fee = ShippingFee::find($id);
+
         if (!$fee) {
             return response()->json(['message' => 'Not found'], 404);
         }
+
         return response()->json($fee);
     }
 
@@ -78,32 +78,45 @@ class ShippingFeeController extends Controller
     public function update(ShippingFeeRequest $request, $id)
     {
         $fee = ShippingFee::find($id);
+
         if (!$fee) {
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        $fee->update($request->validated());
+        try {
+            $fee->update($request->validated());
 
-        return response()->json([
-            'message' => 'Updated',
-            'data' => $fee
-        ]);
+            return response()->json([
+                'message' => 'Updated',
+                'data' => $fee
+            ]);
+
+        } catch (QueryException $e) {
+            if ($e->getCode() == 23000) {
+                return response()->json([
+                    'message' => 'Shipping fee already exists for this province/ward'
+                ], 409);
+            }
+
+            throw $e;
+        }
     }
 
     // DELETE /api/shipping-fees/{id}
     public function destroy($id)
     {
         $fee = ShippingFee::find($id);
+
         if (!$fee) {
             return response()->json(['message' => 'Not found'], 404);
         }
+
         $fee->delete();
 
         return response()->json(['message' => 'Deleted']);
     }
 
-    // Helper: get fee by province/ward for checkout
-    // GET /api/shipping-fees/lookup?province_code=xxx&ward_code=yyy
+    // GET /api/shipping-fees/lookup
     public function lookup(Request $request)
     {
         $province = $request->province_code;
@@ -113,7 +126,6 @@ class ShippingFeeController extends Controller
             return response()->json(['message' => 'province_code is required'], 400);
         }
 
-        // ưu tiên exact ward match, fallback to province only
         $query = ShippingFee::where('province_code', $province);
 
         if ($ward) {
@@ -123,8 +135,8 @@ class ShippingFeeController extends Controller
             }
         }
 
-        $byProvince = $query->whereNull('ward_code')->first()
-            ?? $query->orderBy('fee')->first();
+        $byProvince = (clone $query)->whereNull('ward_code')->first()
+            ?? (clone $query)->orderBy('fee')->first();
 
         if (!$byProvince) {
             return response()->json(['message' => 'No shipping fee found'], 404);
@@ -133,6 +145,7 @@ class ShippingFeeController extends Controller
         return response()->json(['data' => $byProvince]);
     }
 
+    // GET /api/shipping-fees/all
     public function getAll()
     {
         $data = ShippingFee::orderBy('province_name')->get();
@@ -142,5 +155,4 @@ class ShippingFeeController extends Controller
             'data' => $data
         ]);
     }
-
 }

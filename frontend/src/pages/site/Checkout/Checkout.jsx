@@ -152,7 +152,12 @@ function Checkout() {
         setIsProcessing(true);
 
         try {
+
+            const userDetail = JSON.parse(localStorage.getItem("userDetail") || "{}");
+            const userId = userDetail.userId || null;
+
             const orderData = {
+                user_id: userId,
                 customer_info: {
                     fullName: fullName,
                     email: email,

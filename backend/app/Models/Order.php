@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Notifications\Notifiable;
 
 class Order extends Model
 {
+    use Notifiable;
     protected $table = 'orders';
 
     protected $fillable = [
@@ -34,6 +36,10 @@ class Order extends Model
         'total' => 'integer',
     ];
 
+    public function routeNotificationForMail($notification)
+    {
+        return $this->email;
+    }
     public function user()
     {
         return $this->belongsTo(User::class);

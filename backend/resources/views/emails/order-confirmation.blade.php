@@ -75,31 +75,36 @@
                             <table width="100%" cellpadding="0" cellspacing="0" @if(!$isLastItem) style="margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid #e5e7eb;" @endif>
                                 <tr>
                                     <td width="70" style="padding-right: 12px; vertical-align: top;">
-                                        @if(!empty($item['image']))
-                                        <img src="{{ $item['image'] }}" alt="{{ $item['name'] }}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb;">
+                                        {{-- 🔥 FIX: Dùng $item->image thay vì $item['image'] --}}
+                                        @if(!empty($item->image))
+                                        <img src="{{ $item->image }}" alt="{{ $item->product_name }}" style="width: 70px; height: 70px; object-fit: cover; border-radius: 10px; border: 1px solid #e5e7eb;">
                                         @else
                                         <div style="width: 70px; height: 70px; background-color: #f3f4f6; border-radius: 10px; border: 1px solid #e5e7eb;"></div>
                                         @endif
                                     </td>
                                     <td style="vertical-align: top;">
                                         <p style="margin: 0 0 6px; color: #111827; font-size: 15px; font-weight: 600; line-height: 1.3;">
-                                            {{ $item['name'] ?? 'Product' }}
+                                            {{-- 🔥 FIX: Dùng $item->product_name --}}
+                                            {{ $item->product_name ?? 'Product' }}
                                         </p>
                                         <p style="margin: 0; color: #6b7280; font-size: 13px; line-height: 1.4;">
-                                            @if(!empty($item['size']))
-                                            <span style="display: inline-block; background-color: #f3f4f6; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">{{ $item['size'] }}</span>
+                                            {{-- 🔥 FIX: Dùng $item->size và $item->color --}}
+                                            @if(!empty($item->size))
+                                            <span style="display: inline-block; background-color: #f3f4f6; padding: 2px 8px; border-radius: 4px; margin-right: 4px;">{{ $item->size }}</span>
                                             @endif
-                                            @if(!empty($item['color']))
-                                            <span style="display: inline-block; background-color: #f3f4f6; padding: 2px 8px; border-radius: 4px;">{{ $item['color'] }}</span>
+                                            @if(!empty($item->color))
+                                            <span style="display: inline-block; background-color: #f3f4f6; padding: 2px 8px; border-radius: 4px;">{{ $item->color }}</span>
                                             @endif
                                         </p>
                                         <p style="margin: 6px 0 0; color: #6b7280; font-size: 13px;">
-                                            Qty: <strong style="color: #111827;">{{ $item['quantity'] ?? 1 }}</strong>
+                                            {{-- 🔥 FIX: Dùng $item->quantity --}}
+                                            Qty: <strong style="color: #111827;">{{ $item->quantity ?? 1 }}</strong>
                                         </p>
                                     </td>
                                     <td align="right" style="vertical-align: top; padding-left: 12px;">
                                         <p style="margin: 0; color: #111827; font-size: 16px; font-weight: 700; white-space: nowrap;">
-                                            {{ number_format(($item['price'] ?? 0) * ($item['quantity'] ?? 1), 0, ',', '.') }}₫
+                                            {{-- 🔥 FIX: Dùng $item->total hoặc tính từ price * quantity --}}
+                                            {{ number_format($item->total ?? ($item->price * $item->quantity), 0, ',', '.') }}₫
                                         </p>
                                     </td>
                                 </tr>
@@ -158,18 +163,17 @@
                                     Shipping Address
                                 </p>
                                 <p style="margin: 8px 0 0; color: #111827; font-size: 15px; line-height: 1.6;">
-                                    <strong style="font-weight: 700;">{{ $order->customer_info['fullName'] ?? '' }}</strong><br>
-                                    <span style="color: #6b7280;">{{ $order->customer_info['phone'] ?? '' }}</span><br>
+                                    {{-- 🔥 FIX: Dùng $order->full_name và $order->phone (MySQL) --}}
+                                    <strong style="font-weight: 700;">{{ $order->full_name }}</strong><br>
+                                    <span style="color: #6b7280;">{{ $order->phone }}</span><br>
                                     <span style="color: #374151;">
-                                        {{ $order->shipping_address['houseNumber'] ?? '' }}
-                                        @if(!empty($order->shipping_address['ward']))
-                                        , {{ $order->shipping_address['ward'] }}
+                                        {{-- 🔥 FIX: Dùng các column riêng của MySQL --}}
+                                        {{ $order->house_number }}
+                                        @if(!empty($order->ward))
+                                        , {{ $order->ward }}
                                         @endif
-                                        @if(!empty($order->shipping_address['district']))
-                                        , {{ $order->shipping_address['district'] }}
-                                        @endif
-                                        @if(!empty($order->shipping_address['province']))
-                                        <br>{{ $order->shipping_address['province'] }}
+                                        @if(!empty($order->province))
+                                        <br>{{ $order->province }}
                                         @endif
                                     </span>
                                 </p>
