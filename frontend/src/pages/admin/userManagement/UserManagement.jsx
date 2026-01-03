@@ -46,7 +46,7 @@ const UserManagement = () => {
     btnAdd: true,
     btnEdit: true,
     btnDelete: true,
-    btnDetail: true,
+    btnDetail: false,
     btnSetting: false,
   };
 
@@ -117,30 +117,44 @@ const UserManagement = () => {
 
   const handleAvatarChange = (e) => {
     const file = e.target.files[0];
-    if (file) {
-      if (!file.type.startsWith("image/")) {
-        message.error("Vui lòng chọn một tệp ảnh hợp lệ!");
-        return;
-      }
 
-      const maxSizeInBytes = 10 * 1024 * 1024;
-      if (file.size > maxSizeInBytes) {
-        message.error("Kích thước ảnh không được vượt quá 10MB!");
-        return;
-      }
-
-      setSelectedAvatar(file);
-
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          avatar: reader.result,
-        }));
-      };
-      reader.readAsDataURL(file);
+    // Kiểm tra xem người dùng có chọn file không
+    if (!file) {
+      setSelectedAvatar(null); // Nếu không chọn file, reset avatar
+      setFormData((prev) => ({
+        ...prev,
+        avatar: null, // Reset avatar trong formData
+      }));
+      return;
     }
+
+    // Kiểm tra xem file có phải là ảnh hay không
+    if (!file.type.startsWith("image/")) {
+      message.error("Vui lòng chọn một tệp ảnh hợp lệ!");
+      return;
+    }
+
+    // Kiểm tra kích thước ảnh, giới hạn 10MB
+    const maxSizeInBytes = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSizeInBytes) {
+      message.error("Kích thước ảnh không được vượt quá 10MB!");
+      return;
+    }
+
+    // Cập nhật trạng thái với file avatar mới
+    setSelectedAvatar(file);
+
+    // Đọc file ảnh và lưu vào formData
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setFormData((prev) => ({
+        ...prev,
+        avatar: reader.result, // Lưu base64 image vào formData
+      }));
+    };
+    reader.readAsDataURL(file); // Đọc file dưới dạng base64
   };
+
 
   const handleResetStatus = () => {
     updateStatus({ isAdd: true, isEditing: false, isViewDetail: false });
@@ -219,18 +233,15 @@ const UserManagement = () => {
         toast.success("Cập nhật thành công!");
       } else if (statusFunction.isAdd) {
         const cleanString = (value) => (value?.trim() === "" ? null : value);
-
-        const { id, ...rest } = formData;
-
+        const { id, status, ...rest } = formData;
         const newFormData = {
-          ...rest,
-          avatar: cleanString(rest.avatar),
-          phoneNumber: cleanString(rest.phoneNumber),
+          full_name: rest.fullName,               
+          email: rest.email,
+          phone_number: cleanString(rest.phoneNumber),
           gender:
             rest.gender === "" ? null : rest.gender === "1" ? true : false,
-          status: rest.status,
+          role: rest.role,
         };
-
         const newUser = await UserService.createUser(newFormData);
         const formattedUser = {
           ...newUser,
@@ -239,9 +250,8 @@ const UserManagement = () => {
               ? ""
               : formData.gender === true
               ? "1"
-              : "0",
+              : "0",  
         };
-
         setUserData([...userData, formattedUser]);
         message.success("Thêm mới thành công!");
       }
@@ -280,67 +290,61 @@ const UserManagement = () => {
   };
 
   const modalContent = (
-    <>
-      {formData && statusFunction.isEditing ? (
-        <div className="flex flex-col md:flex-row gap-6">
-          {/* Avatar Section */}
-          <div className="flex flex-col items-center justify-start w-full md:w-1/3">
-            <div onClick={handleAvatarClick} className="cursor-pointer mb-3">
-              <Avatar
-                size={150}
-                src={formData.avatar || defaultAvatar}
-                icon={!formData.avatar && <UserOutlined />}
-                className="border-4 border-black"
-              />
-              <input
-                type="file"
-                accept="image/*"
-                ref={fileInputRef}
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-            </div>
-            <small className="text-blue-600 italic text-center">
-              Nhấp vào ảnh để thay đổi!
-            </small>
+  <>
+    {formData && statusFunction.isEditing ? (
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Avatar Section */}
+        <div className="flex flex-col items-center justify-start w-full md:w-1/3">
+          <div onClick={handleAvatarClick} className="cursor-pointer mb-3">
+            <Avatar
+              size={150}
+              src={formData.avatar || defaultAvatar}
+              icon={!formData.avatar && <UserOutlined />}
+              className="border-4 border-black"
+            />
+            <input
+              type="file"
+              accept="image/*"
+              ref={fileInputRef}
+              onChange={handleAvatarChange}
+              className="hidden"
+            />
           </div>
+          <small className="text-blue-600 italic text-center">
+            Nhấp vào ảnh để thay đổi!
+          </small>
+        </div>
 
-          {/* Form Section */}
-          <div className="flex-1">
-            <Form
-              form={form}
-              layout="vertical"
-              initialValues={{
-                fullName: formData.fullName,
-                email: formData.email,
-                phoneNumber: formData.phoneNumber,
-                gender: formData.gender,
-                role: formData.role,
-                status: formData.status === "ACTIVE",
-              }}
-            >
-              {/* <Form.Item
+        {/* Form Section */}
+        <div className="flex-1">
+          <Form
+            form={form}
+            layout="vertical"
+            initialValues={{
+              fullName: formData.fullName,
+              email: formData.email,
+              phoneNumber: formData.phoneNumber,
+              gender: formData.gender,
+              role: formData.role,
+              status: formData.status === "ACTIVE",
+            }}
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Form.Item
                 label="Họ và tên"
                 name="fullName"
                 rules={[
                   { required: true, message: "Tên không được để trống." },
-                  {
-                    pattern: /^[^\d]*$/,
-                    message: "Tên không được chứa số.",
-                  },
+                  { pattern: /^[^\d]*$/, message: "Tên không được chứa số." },
                 ]}
               >
                 <Input
-                  placeholder="VD: Nguyễn Văn A"
+                  placeholder="VD: Nguyen Van A"
                   maxLength={100}
-                  onChange={(e) =>
-                    handleInputChange("fullName", e.target.value)
-                  }
-                  className="w-full"
+                  onChange={(e) => handleInputChange("fullName", e.target.value)}
                 />
-              </Form.Item> */}
-
-              {/* <Form.Item
+              </Form.Item>
+              <Form.Item
                 label="Email"
                 name="email"
                 rules={[
@@ -350,43 +354,36 @@ const UserManagement = () => {
               >
                 <Input
                   placeholder="Nhập email"
-                  maxLength={100}
                   onChange={(e) => handleInputChange("email", e.target.value)}
-                  className="w-full"
                 />
-              </Form.Item> */}
+              </Form.Item>
+            <Form.Item
+                  label="Số điện thoại"
+                  name="phoneNumber"
+                  rules={[
+                    { pattern: /^[0-9]{10,15}$/, message: "Số điện thoại không hợp lệ." },
+                  ]}
+                >
+                  <Input
+                    placeholder="Nhập số điện thoại"
+                    maxLength={15}
+                    onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+                  />
+                </Form.Item>
 
-              {/* <Form.Item
-                label="Số điện thoại"
-                name="phoneNumber"
-                rules={[
-                  {
-                    pattern: /^[0-9]{10,15}$/,
-                    message: "Số điện thoại không hợp lệ.",
-                  },
-                ]}
-              >
-                <Input
-                  placeholder="Nhập số điện thoại"
-                  maxLength={15}
-                  onChange={(e) =>
-                    handleInputChange("phoneNumber", e.target.value)
-                  }
-                  className="w-full"
-                />
-              </Form.Item> */}
-
-              {/* <Form.Item label="Giới tính" name="gender">
+              <Form.Item label="Giới tính" name="gender">
                 <Select
                   placeholder="Chọn giới tính"
-                  onChange={(value) => handleInputChange("gender", value)}
+                  onChange={(value) => handleInputChange("gender", value === "" ? null : value)}
                   className="w-full"
+                  value={formData.gender ?? ""}
                 >
                   <Option value="">Chưa có</Option>
                   <Option value="1">Nam</Option>
                   <Option value="0">Nữ</Option>
                 </Select>
-              </Form.Item> */}
+              </Form.Item>
+
 
               <Form.Item
                 label="Vai trò"
@@ -395,99 +392,120 @@ const UserManagement = () => {
               >
                 <Select
                   onChange={(value) => handleInputChange("role", value)}
-                  className="w-full"
                 >
                   <Option value="ADMIN">Quản Trị</Option>
                   <Option value="USER">Người dùng</Option>
                 </Select>
               </Form.Item>
 
-              <Form.Item
-                label="Trạng thái"
-                name="status"
-                valuePropName="checked"
-              >
+              <Form.Item label="Trạng thái" name="status" valuePropName="checked">
                 <Switch
                   checkedChildren="Hoạt động"
                   unCheckedChildren="Vô hiệu hóa"
                   onChange={(checked) =>
-                    handleInputChange("status", checked ? "ACTIVE" : "DISABLED")
+                    handleInputChange("status", checked ? "ACTIVE" : "INACTIVE")
                   }
                 />
               </Form.Item>
-            </Form>
-          </div>
+            </div>
+          </Form>
         </div>
-      ) : (
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{
-            fullName: formData.fullName,
-            email: formData.email,
-            role: formData.role,
-            status: formData.status === "ACTIVE",
-          }}
-        >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Form.Item
-              label="Họ và tên"
-              name="fullName"
-              rules={[
-                { required: true, message: "Tên không được để trống." },
-                {
-                  pattern: /^[^\d]*$/,
-                  message: "Tên không được chứa số.",
-                },
-              ]}
-            >
-              <Input
-                placeholder="VD: Nguyen Van A"
-                maxLength={100}
-                onChange={(e) => handleInputChange("fullName", e.target.value)}
-              />
-            </Form.Item>
+      </div>
+    ) : (
+      <Form
+        form={form}
+        layout="vertical"
+        initialValues={{
+          fullName: formData.fullName,
+          email: formData.email,
+          phoneNumber: formData.phoneNumber,
+          gender: formData.gender,
+          role: formData.role,
+          status: formData.status === "ACTIVE",
+        }}
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Form.Item
+            label="Họ và tên"
+            name="fullName"
+            rules={[
+              { required: true, message: "Tên không được để trống." },
+              { pattern: /^[^\d]*$/, message: "Tên không được chứa số." },
+            ]}
+          >
+            <Input
+              placeholder="VD: Nguyen Van A"
+              maxLength={100}
+              onChange={(e) => handleInputChange("fullName", e.target.value)}
+            />
+          </Form.Item>
 
-            <Form.Item
-              label="Email"
-              name="email"
-              rules={[
-                { required: true, message: "Email không được để trống." },
-                { type: "email", message: "Email không hợp lệ." },
-              ]}
-            >
-              <Input
-                placeholder="Nhập email"
-                onChange={(e) => handleInputChange("email", e.target.value)}
-              />
-            </Form.Item>
+          <Form.Item
+            label="Email"
+            name="email"
+            rules={[
+              { required: true, message: "Email không được để trống." },
+              { type: "email", message: "Email không hợp lệ." },
+            ]}
+          >
+            <Input
+              placeholder="Nhập email"
+              onChange={(e) => handleInputChange("email", e.target.value)}
+            />
+          </Form.Item>
 
-            <Form.Item
-              label="Vai trò"
-              name="role"
-              rules={[{ required: true, message: "Vui lòng chọn vai trò." }]}
-            >
-              <Select onChange={(value) => handleInputChange("role", value)}>
-                <Option value="ADMIN">Quản Trị</Option>
-                <Option value="USER">Người dùng</Option>
-              </Select>
-            </Form.Item>
+         <Form.Item
+            label="Số điện thoại"
+            name="phoneNumber"
+            rules={[
+              { pattern: /^[0-9]{10,15}$/, message: "Số điện thoại không hợp lệ." },
+            ]}
+          >
+            <Input
+              placeholder="Nhập số điện thoại"
+              maxLength={15}
+              onChange={(e) => handleInputChange("phoneNumber", e.target.value)}
+            />
+          </Form.Item>
 
-            <Form.Item label="Trạng thái" name="status" valuePropName="checked">
-              <Switch
-                checkedChildren="Hoạt động"
-                unCheckedChildren="Vô hiệu hóa"
-                onChange={(checked) =>
-                  handleInputChange("status", checked ? "ACTIVE" : "DISABLED")
-                }
-              />
-            </Form.Item>
-          </div>
-        </Form>
+        <Form.Item label="Giới tính" name="gender">
+          <Select
+            placeholder="Chọn giới tính"
+            onChange={(value) => handleInputChange("gender", value === "" ? null : value)}
+            className="w-full"
+            value={formData.gender ?? ""}
+          >
+            <Option value="">Chưa có</Option>
+            <Option value="1">Nam</Option>
+            <Option value="0">Nữ</Option>
+          </Select>
+        </Form.Item>
+        
+          <Form.Item
+            label="Vai trò"
+            name="role"
+            rules={[{ required: true, message: "Vui lòng chọn vai trò." }]}
+          >
+            <Select onChange={(value) => handleInputChange("role", value)}>
+              <Option value="ADMIN">Quản Trị</Option>
+              <Option value="USER">Người dùng</Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item label="Trạng thái" name="status" valuePropName="checked">
+            <Switch
+              checkedChildren="Hoạt động"
+              unCheckedChildren="Vô hiệu hóa"
+              onChange={(checked) =>
+                handleInputChange("status", checked ? "ACTIVE" : "INACTIVE")
+              }
+            />
+          </Form.Item>
+        </div>
+      </Form>
       )}
     </>
   );
-
   return (
     <>
       {/* <Helmet>

@@ -40,13 +40,16 @@ class UserService implements UserServiceInterface
     }
 
     public function createUser(array $data)
-    {
+    {   
         $randomPassword = $this->createRandomPassword(8);
         $data['password'] = Hash::make($randomPassword);
         $data['status'] = UserStatus::ACTIVE;
         $data['role'] = $data['role'] ?? UserRole::USER;
         $data['is_verified'] = true;
         $data['email_verified_at'] = now();
+        if (array_key_exists('gender', $data)) {
+            $data['gender'] = is_null($data['gender']) ? null : (int)$data['gender'];
+        }
 
         $user = $this->userRepository->create($data);
 
@@ -62,6 +65,9 @@ class UserService implements UserServiceInterface
             if ($existing && $existing->id !== $user->id) {
                 throw new \Exception('Email đã tồn tại');
             }
+        }
+        if (array_key_exists('gender', $data)) {
+            $data['gender'] = is_null($data['gender']) ? null : (int)$data['gender'];
         }
 
         if (isset($data['avatar']) && $data['avatar'] instanceof \Illuminate\Http\UploadedFile) {
@@ -85,14 +91,12 @@ class UserService implements UserServiceInterface
             } catch (\Exception $e) {
                 throw new \Exception('Upload avatar thất bại: ' . $e->getMessage());
             }
-        } else {
-            // Nếu không upload avatar mới, giữ nguyên avatar cũ
-            unset($data['avatar']);
-        }
-
+            } else {
+                // Nếu không upload avatar mới, giữ nguyên avatar cũ
+                unset($data['avatar']);
+            }
         return $this->userRepository->update($user->id, $data);
     }
-
     public function deleteUser(User $user)
     {
         return $this->userRepository->delete($user->id);
