@@ -9,26 +9,45 @@ class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Helper to get value from array or object (MongoDB vs MySQL compatibility)
+        $getValue = function($data, $key, $default = null) {
+            if (is_array($data)) {
+                return $data[$key] ?? $default;
+            }
+            if (is_object($data)) {
+                return $data->$key ?? $default;
+            }
+            return $default;
+        };
+
+        // Get category data (handle both array and object)
+        $category = $this->category ?? null;
+        $categoryData = [
+            'name' => $category ? $getValue($category, 'name') : null,
+            'slug' => $category ? $getValue($category, 'slug') : null,
+            'parent' => $category ? $getValue($category, 'parent') : null,
+        ];
+
+        // Get brand data (handle both array and object)
+        $brand = $this->brand ?? null;
+        $brandData = [
+            'name' => $brand ? $getValue($brand, 'name') : null,
+            'slug' => $brand ? $getValue($brand, 'slug') : null,
+            'country' => $brand ? $getValue($brand, 'country') : null,
+            'logo' => $brand ? $getValue($brand, 'logo') : null,
+        ];
+
         return [
-            'id' => (string) $this->id,
-            'name' => $this->name,
-            'slug' => $this->slug,
-            'description' => $this->description,
+            'id' => (string) ($this->_id ?? $this->id ?? ''),
+            'name' => $this->name ?? '',
+            'slug' => $this->slug ?? '',
+            'description' => $this->description ?? '',
             
-            // Category (Embedded)
-            'category' => [
-                'name' => $this->category['name'] ?? null,
-                'slug' => $this->category['slug'] ?? null,
-                'parent' => $this->category['parent'] ?? null,
-            ],
+            // Category (handle both MongoDB array and MySQL object)
+            'category' => $categoryData,
             
-            // Brand (Embedded)
-            'brand' => [
-                'name' => $this->brand['name'] ?? null,
-                'slug' => $this->brand['slug'] ?? null,
-                'country' => $this->brand['country'] ?? null,
-                'logo' => $this->brand['logo'] ?? null,
-            ],
+            // Brand (handle both MongoDB array and MySQL object)
+            'brand' => $brandData,
             
             // Pricing
             'price' => $this->price,
@@ -46,14 +65,14 @@ class ProductResource extends JsonResource
             'stock' => $this->stock ?? 0,
             'in_stock' => ($this->stock ?? 0) > 0,
             
-            // Images (Array)
-            'images' => $this->images ?? [],
+            // Images (handle both collection and array)
+            'images' => $this->getImagesArray(),
             'main_image' => $this->getMainImage(),
             'thumbnail' => $this->getThumbnail(),
             
-            // Variants (Array)
-            'variants' => $this->variants ?? [],
-            'dressStyle' => $this->dressStyle ?? null,
+            // Variants (handle both collection and array)
+            'variants' => $this->getVariantsArray(),
+            'dressStyle' => $this->dress_style ?? $this->dressStyle ?? null,
             'available_sizes' => $this->getAvailableSizes(),
             'available_colors' => $this->getAvailableColors(),
             
@@ -79,14 +98,14 @@ class ProductResource extends JsonResource
             'is_new' => (bool) ($this->is_new ?? false),
             'is_bestseller' => (bool) ($this->is_bestseller ?? false),
             
-            // Statistics (Embedded)
+            // Statistics (handle both array and object)
             'stats' => [
-                'rating_average' => $this->stats['rating_average'] ?? 0,
-                'rating_count' => $this->stats['rating_count'] ?? 0,
-                'review_count' => $this->stats['review_count'] ?? 0,
-                'sold_count' => $this->stats['sold_count'] ?? 0,
-                'view_count' => $this->stats['view_count'] ?? 0,
-                'wishlist_count' => $this->stats['wishlist_count'] ?? 0,
+                'rating_average' => $this->getStatsValue('rating_average', 0),
+                'rating_count' => $this->getStatsValue('rating_count', 0),
+                'review_count' => $this->getStatsValue('review_count', 0),
+                'sold_count' => $this->getStatsValue('sold_count', 0),
+                'view_count' => $this->getStatsValue('view_count', 0),
+                'wishlist_count' => $this->getStatsValue('wishlist_count', 0),
             ],
             
             // Timestamps
@@ -106,19 +125,28 @@ class ProductResource extends JsonResource
 
     private function getMainImage(): ?string
     {
-        if (empty($this->images)) {
+        $images = $this->getImagesArray();
+        if (empty($images)) {
             return null;
         }
 
         // Find primary image
-        foreach ($this->images as $image) {
-            if (isset($image['is_primary']) && $image['is_primary']) {
-                return $image['url'] ?? null;
+        foreach ($images as $image) {
+            $isPrimary = is_array($image) ? ($image['is_primary'] ?? 0) : ($image->is_primary ?? 0);
+            if ($isPrimary == 1) {
+                return is_array($image) ? ($image['url'] ?? $image['image_url'] ?? null) : ($image->url ?? $image->image_url ?? null);
             }
         }
 
         // Return first image if no primary
-        return $this->images[0]['url'] ?? null;
+        $firstImage = $images[0] ?? null;
+        if (!$firstImage) {
+            return null;
+        }
+        
+        return is_array($firstImage) 
+            ? ($firstImage['url'] ?? $firstImage['image_url'] ?? null)
+            : ($firstImage->url ?? $firstImage->image_url ?? null);
     }
 
     private function getThumbnail(): ?string
@@ -127,16 +155,95 @@ class ProductResource extends JsonResource
         return $this->getMainImage();
     }
 
+    // Helper to get images as array (handle both collection and array)
+    private function getImagesArray(): array
+    {
+        $images = $this->images ?? [];
+        
+        // Convert Eloquent collection to array
+        if (is_object($images) && method_exists($images, 'toArray')) {
+            $images = $images->toArray();
+        }
+        
+        if (!is_array($images)) {
+            return [];
+        }
+
+        // Convert to consistent format
+        return array_map(function($img) {
+            // Handle Eloquent model object
+            if (is_object($img) && !is_array($img)) {
+                return [
+                    'id' => $img->id ?? null,
+                    'product_id' => $img->product_id ?? null,
+                    'image_url' => $img->image_url ?? $img->url ?? null,
+                    'url' => $img->url ?? $img->image_url ?? null,
+                    'is_primary' => $img->is_primary ?? 0,
+                ];
+            }
+            
+            // Handle array
+            if (is_array($img)) {
+                return [
+                    'id' => $img['id'] ?? null,
+                    'product_id' => $img['product_id'] ?? null,
+                    'image_url' => $img['image_url'] ?? $img['url'] ?? null,
+                    'url' => $img['url'] ?? $img['image_url'] ?? null,
+                    'is_primary' => $img['is_primary'] ?? 0,
+                ];
+            }
+            
+            return $img;
+        }, $images);
+    }
+
+    // Helper to get variants as array (handle both collection and array)
+    private function getVariantsArray(): array
+    {
+        $variants = $this->variants ?? [];
+        
+        if (is_object($variants) && method_exists($variants, 'toArray')) {
+            $variants = $variants->toArray();
+        }
+        
+        if (!is_array($variants)) {
+            return [];
+        }
+
+        return $variants;
+    }
+
+    // Helper to get stats value (handle both array and object)
+    private function getStatsValue(string $key, $default = 0)
+    {
+        $stats = $this->stats ?? null;
+        if (!$stats) {
+            return $default;
+        }
+
+        if (is_array($stats)) {
+            return $stats[$key] ?? $default;
+        }
+
+        if (is_object($stats)) {
+            return $stats->$key ?? $default;
+        }
+
+        return $default;
+    }
+
     private function getAvailableSizes(): array
     {
-        if (empty($this->variants)) {
+        $variants = $this->getVariantsArray();
+        if (empty($variants)) {
             return [];
         }
 
         $sizes = [];
-        foreach ($this->variants as $variant) {
-            if (!in_array($variant['size'], $sizes)) {
-                $sizes[] = $variant['size'];
+        foreach ($variants as $variant) {
+            $size = is_array($variant) ? ($variant['size'] ?? null) : ($variant->size ?? null);
+            if ($size && !in_array($size, $sizes)) {
+                $sizes[] = $size;
             }
         }
 
@@ -145,17 +252,20 @@ class ProductResource extends JsonResource
 
     private function getAvailableColors(): array
     {
-        if (empty($this->variants)) {
+        $variants = $this->getVariantsArray();
+        if (empty($variants)) {
             return [];
         }
 
         $colors = [];
-        foreach ($this->variants as $variant) {
-            $colorKey = $variant['color'];
-            if (!isset($colors[$colorKey])) {
-                $colors[$colorKey] = [
-                    'name' => $variant['color'],
-                    'code' => $variant['color_code'] ?? null,
+        foreach ($variants as $variant) {
+            $color = is_array($variant) ? ($variant['color'] ?? null) : ($variant->color ?? null);
+            $colorCode = is_array($variant) ? ($variant['color_code'] ?? null) : ($variant->color_code ?? null);
+            
+            if ($color && !isset($colors[$color])) {
+                $colors[$color] = [
+                    'name' => $color,
+                    'code' => $colorCode,
                 ];
             }
         }
