@@ -25,18 +25,11 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function findBySlug(string $slug)
     {
-        $product = Product::where('slug', $slug)->first();
+        $product = Product::where('slug', $slug)->firstOrFail();
 
-        if (!$product) {
-            return response()->json([
-                'message' => 'Sản phẩm không tồn tại'
-            ], 404);
-        }
-
-        // Trả về Resource chỉ khi $product tồn tại
         return new ProductResource($product);
-
     }
+
 
     public function findByCategorySlug(string $categorySlug, int $page = 1, int $perPage = 15)
     {

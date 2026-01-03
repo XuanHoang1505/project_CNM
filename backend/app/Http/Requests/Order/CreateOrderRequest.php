@@ -9,9 +9,10 @@ class CreateOrderRequest extends BaseRequest
     public function rules(): array
     {
         return [
-            'full_name' => 'required|string|max:255',
-            'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
+             'user_id' => 'nullable|integer|exists:users,id',
+            'customer_info.fullName' => 'required|string',
+            'customer_info.email' => 'required|email',
+            'customer_info.phone' => 'required|string',
 
             'house_number' => 'required|string|max:255',
             'province' => 'required|string|max:255',
@@ -20,7 +21,7 @@ class CreateOrderRequest extends BaseRequest
 
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.product_name' => 'required|string|max:255',
+            'items.*.name' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|integer|min:0', 
             'items.*.size' => 'nullable|string|max:50',
