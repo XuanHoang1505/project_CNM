@@ -35,7 +35,7 @@ import {
 } from "@ant-design/icons";
 import { toast } from "react-toastify";
 import ProductService from "@/services/site/ProductService";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -49,12 +49,13 @@ const ProductAdminPanel = () => {
   const [product, setProduct] = useState(null);
   const [activeTab, setActiveTab] = useState("basic");
 
-  // Tách riêng ảnh cũ và ảnh mới
-  const [existingImages, setExistingImages] = useState([]); // Array of image objects {id, image_url}
-  const [newImageFiles, setNewImageFiles] = useState([]); // Array of File objects
-  const [newImagePreviews, setNewImagePreviews] = useState([]); // Array of preview URLs
+  const navigate = useNavigate();
 
-  // Master data (fetch từ API hoặc hardcode)
+  // Tách riêng ảnh cũ và ảnh mới
+  const [existingImages, setExistingImages] = useState([]); 
+  const [newImageFiles, setNewImageFiles] = useState([]); 
+  const [newImagePreviews, setNewImagePreviews] = useState([]); 
+
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
   const dressStyles = [
@@ -109,11 +110,10 @@ const ProductAdminPanel = () => {
     try {
       setLoading(true);
       const response = await ProductService.getProductBySlug(slug);
-      
+
       const productData = response.data;
       setProduct(productData);
-      
-      
+
       setExistingImages(productData.images || []);
     } catch (error) {
       toast.error("Không thể tải dữ liệu sản phẩm");
@@ -272,7 +272,7 @@ const ProductAdminPanel = () => {
 
       // Images
       // existing_images: array of URLs cần giữ lại
-      const existingImageUrls = existingImages.map(img => img.image_url);
+      const existingImageUrls = existingImages.map((img) => img.image_url);
       formData.append("existing_images", JSON.stringify(existingImageUrls));
 
       // new_images: File objects
@@ -287,7 +287,7 @@ const ProductAdminPanel = () => {
       console.log("New images:", newImageFiles.length);
 
       // Gửi request
-      await ProductService.updateProduct(product.id, formData);
+      const response = await ProductService.updateProduct(product.id, formData);
 
       toast.success("Lưu sản phẩm thành công!");
       setIsDirty(false);
@@ -296,6 +296,11 @@ const ProductAdminPanel = () => {
       newImagePreviews.forEach((url) => URL.revokeObjectURL(url));
       setNewImageFiles([]);
       setNewImagePreviews([]);
+
+      const updatedProduct = response.data;
+      if (updatedProduct.slug !== slug) {
+        navigate(`/admin/product/${updatedProduct.slug}`, { replace: true });
+      }
 
       // Refresh data
       await fetchProductData();
@@ -306,8 +311,6 @@ const ProductAdminPanel = () => {
       setSaving(false);
     }
   };
-      console.log(">>> check product", product);
-
 
   if (loading || !product) {
     return (
@@ -318,12 +321,17 @@ const ProductAdminPanel = () => {
   }
 
   // Calculate statistics
-  const totalStock = product.variants?.reduce((sum, v) => sum + (v?.stock || 0), 0) || 0;
-  const lowStockCount = product.variants?.filter((v) => (v?.stock || 0) < 10 && (v?.stock || 0) > 0).length || 0;
-  const outOfStockCount = product.variants?.filter((v) => (v?.stock || 0) === 0).length || 0;
-  const discount = product.compare_price > 0
-    ? Math.round((1 - product.price / product.compare_price) * 100)
-    : 0;
+  const totalStock =
+    product.variants?.reduce((sum, v) => sum + (v?.stock || 0), 0) || 0;
+  const lowStockCount =
+    product.variants?.filter((v) => (v?.stock || 0) < 10 && (v?.stock || 0) > 0)
+      .length || 0;
+  const outOfStockCount =
+    product.variants?.filter((v) => (v?.stock || 0) === 0).length || 0;
+  const discount =
+    product.compare_price > 0
+      ? Math.round((1 - product.price / product.compare_price) * 100)
+      : 0;
   const totalImages = existingImages.length + newImageFiles.length;
 
   const variantColumns = [
@@ -658,7 +666,8 @@ const ProductAdminPanel = () => {
           <div className="mb-4 flex justify-between items-center">
             <Title level={4}>Hình ảnh sản phẩm</Title>
             <Text type="secondary">
-              {existingImages.length} ảnh hiện tại • {newImageFiles.length} ảnh mới
+              {existingImages.length} ảnh hiện tại • {newImageFiles.length} ảnh
+              mới
             </Text>
           </div>
 
@@ -675,7 +684,11 @@ const ProductAdminPanel = () => {
           <Row gutter={16}>
             {/* Hiển thị ảnh cũ */}
             {existingImages.map((img, index) => (
-              <Col span={6} key={`existing-${img.id || index}`} className="mb-4">
+              <Col
+                span={6}
+                key={`existing-${img.id || index}`}
+                className="mb-4"
+              >
                 <Card
                   hoverable
                   cover={
@@ -748,7 +761,10 @@ const ProductAdminPanel = () => {
                 beforeUpload={() => false}
                 onChange={handleImageUpload}
               >
-                <Card hoverable className="h-full flex items-center justify-center">
+                <Card
+                  hoverable
+                  className="h-full flex items-center justify-center"
+                >
                   <div className="flex flex-col items-center justify-center h-48 cursor-pointer">
                     <PlusOutlined className="text-3xl mb-2 text-gray-400" />
                     <div className="text-gray-500">Thêm ảnh mới</div>
@@ -883,7 +899,11 @@ const ProductAdminPanel = () => {
         </Card>
 
         <Card className="shadow-sm">
-          <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
+          <Tabs
+            activeKey={activeTab}
+            onChange={setActiveTab}
+            items={tabItems}
+          />
         </Card>
       </div>
     </div>
