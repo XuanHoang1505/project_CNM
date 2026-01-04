@@ -20,34 +20,14 @@ class ProductResource extends JsonResource
             return $default;
         };
 
-        // Get category data (handle both array and object)
-        $category = $this->category ?? null;
-        $categoryData = [
-            'name' => $category ? $getValue($category, 'name') : null,
-            'slug' => $category ? $getValue($category, 'slug') : null,
-            'parent' => $category ? $getValue($category, 'parent') : null,
-        ];
-
-        // Get brand data (handle both array and object)
-        $brand = $this->brand ?? null;
-        $brandData = [
-            'name' => $brand ? $getValue($brand, 'name') : null,
-            'slug' => $brand ? $getValue($brand, 'slug') : null,
-            'country' => $brand ? $getValue($brand, 'country') : null,
-            'logo' => $brand ? $getValue($brand, 'logo') : null,
-        ];
 
         return [
             'id' => (string) ($this->_id ?? $this->id ?? ''),
             'name' => $this->name ?? '',
             'slug' => $this->slug ?? '',
             'description' => $this->description ?? '',
-            
-            // Category (handle both MongoDB array and MySQL object)
-            'category' => $categoryData,
-            
-            // Brand (handle both MongoDB array and MySQL object)
-            'brand' => $brandData,
+            "category_id" => $this->category_id ?? null,
+            "brand_id" => $this->brand_id ?? null,
             
             // Pricing
             'price' => $this->price,
@@ -60,8 +40,6 @@ class ProductResource extends JsonResource
             'on_sale' => $this->compare_price && $this->compare_price > $this->price,
             
             // Inventory
-            'sku' => $this->sku,
-            'barcode' => $this->barcode,
             'stock' => $this->stock ?? 0,
             'in_stock' => ($this->stock ?? 0) > 0,
             
@@ -70,45 +48,15 @@ class ProductResource extends JsonResource
             'main_image' => $this->getMainImage(),
             'thumbnail' => $this->getThumbnail(),
             
-            // Variants (handle both collection and array)
             'variants' => $this->getVariantsArray(),
             'dressStyle' => $this->dress_style ?? $this->dressStyle ?? null,
-            'available_sizes' => $this->getAvailableSizes(),
-            'available_colors' => $this->getAvailableColors(),
             
-            // Product details
-            'tags' => $this->tags ?? [],
             'material' => $this->material,
             'care_instructions' => $this->care_instructions,
-            
-            // Dimensions
-            'weight' => $this->weight,
-            'dimensions' => $this->dimensions ?? null,
-            
-            // SEO (Hidden by default, show when requested)
-            $this->mergeWhen($request->input('include_seo'), [
-                'meta_title' => $this->meta_title,
-                'meta_description' => $this->meta_description,
-                'meta_keywords' => $this->meta_keywords ?? [],
-            ]),
-            
-            // Status
+        
             'is_featured' => (bool) ($this->is_featured ?? false),
             'is_active' => (bool) ($this->is_active ?? true),
-            'is_new' => (bool) ($this->is_new ?? false),
-            'is_bestseller' => (bool) ($this->is_bestseller ?? false),
             
-            // Statistics (handle both array and object)
-            'stats' => [
-                'rating_average' => $this->getStatsValue('rating_average', 0),
-                'rating_count' => $this->getStatsValue('rating_count', 0),
-                'review_count' => $this->getStatsValue('review_count', 0),
-                'sold_count' => $this->getStatsValue('sold_count', 0),
-                'view_count' => $this->getStatsValue('view_count', 0),
-                'wishlist_count' => $this->getStatsValue('wishlist_count', 0),
-            ],
-            
-            // Timestamps
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
@@ -213,63 +161,4 @@ class ProductResource extends JsonResource
         return $variants;
     }
 
-    // Helper to get stats value (handle both array and object)
-    private function getStatsValue(string $key, $default = 0)
-    {
-        $stats = $this->stats ?? null;
-        if (!$stats) {
-            return $default;
-        }
-
-        if (is_array($stats)) {
-            return $stats[$key] ?? $default;
-        }
-
-        if (is_object($stats)) {
-            return $stats->$key ?? $default;
-        }
-
-        return $default;
-    }
-
-    private function getAvailableSizes(): array
-    {
-        $variants = $this->getVariantsArray();
-        if (empty($variants)) {
-            return [];
-        }
-
-        $sizes = [];
-        foreach ($variants as $variant) {
-            $size = is_array($variant) ? ($variant['size'] ?? null) : ($variant->size ?? null);
-            if ($size && !in_array($size, $sizes)) {
-                $sizes[] = $size;
-            }
-        }
-
-        return $sizes;
-    }
-
-    private function getAvailableColors(): array
-    {
-        $variants = $this->getVariantsArray();
-        if (empty($variants)) {
-            return [];
-        }
-
-        $colors = [];
-        foreach ($variants as $variant) {
-            $color = is_array($variant) ? ($variant['color'] ?? null) : ($variant->color ?? null);
-            $colorCode = is_array($variant) ? ($variant['color_code'] ?? null) : ($variant->color_code ?? null);
-            
-            if ($color && !isset($colors[$color])) {
-                $colors[$color] = [
-                    'name' => $color,
-                    'code' => $colorCode,
-                ];
-            }
-        }
-
-        return array_values($colors);
-    }
 }

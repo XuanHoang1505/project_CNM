@@ -31,7 +31,6 @@ import {
   CloseCircleOutlined,
   ShoppingOutlined,
   DollarOutlined,
-  PercentageOutlined,
   WarningOutlined,
 } from "@ant-design/icons";
 import { toast } from "react-toastify";
@@ -40,6 +39,7 @@ import { useParams } from "react-router-dom";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const ProductAdminPanel = () => {
   const { slug } = useParams();
@@ -50,12 +50,25 @@ const ProductAdminPanel = () => {
   const [activeTab, setActiveTab] = useState("basic");
 
   // Tách riêng ảnh cũ và ảnh mới
-  const [existingImages, setExistingImages] = useState([]); // Array of URLs
+  const [existingImages, setExistingImages] = useState([]); // Array of image objects {id, image_url}
   const [newImageFiles, setNewImageFiles] = useState([]); // Array of File objects
   const [newImagePreviews, setNewImagePreviews] = useState([]); // Array of preview URLs
 
+  // Master data (fetch từ API hoặc hardcode)
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+  const dressStyles = [
+    { value: "Casual", label: "Casual - Thường ngày" },
+    { value: "Formal", label: "Formal - Trang trọng" },
+    { value: "Sport", label: "Sport - Thể thao" },
+    { value: "Business", label: "Business - Công sở" },
+    { value: "Street", label: "Street - Đường phố" },
+    { value: "Vintage", label: "Vintage - Cổ điển" },
+  ];
+
   useEffect(() => {
     fetchProductData();
+    fetchMasterData();
   }, [slug]);
 
   // Cleanup preview URLs when component unmounts
@@ -65,14 +78,46 @@ const ProductAdminPanel = () => {
     };
   }, []);
 
+  const fetchMasterData = async () => {
+    try {
+      // Fetch categories and brands
+      // const [categoriesRes, brandsRes] = await Promise.all([
+      //   ProductService.getAllCategories(),
+      //   ProductService.getAllBrands()
+      // ]);
+      // setCategories(categoriesRes.data);
+      // setBrands(brandsRes.data);
+
+      // Temporary hardcoded data
+      setCategories([
+        { id: 1, name: "Áo Nam" },
+        { id: 2, name: "Quần Nam" },
+        { id: 3, name: "Phụ kiện" },
+      ]);
+      setBrands([
+        { id: 1, name: "Nike" },
+        { id: 2, name: "Adidas" },
+        { id: 3, name: "Zara" },
+        { id: 4, name: "H&M" },
+      ]);
+    } catch (error) {
+      console.error("Error fetching master data:", error);
+    }
+  };
+
   const fetchProductData = async () => {
     try {
       setLoading(true);
       const response = await ProductService.getProductBySlug(slug);
-      setProduct(response.data);
-      setExistingImages(response.data.images || []);
+      
+      const productData = response.data;
+      setProduct(productData);
+      
+      
+      setExistingImages(productData.images || []);
     } catch (error) {
       toast.error("Không thể tải dữ liệu sản phẩm");
+      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -80,28 +125,6 @@ const ProductAdminPanel = () => {
 
   const updateField = (field, value) => {
     setProduct((prev) => ({ ...prev, [field]: value }));
-    setIsDirty(true);
-  };
-
-  const updateNestedField = (parentField, childField, value) => {
-    setProduct((prev) => ({
-      ...prev,
-      [parentField]: {
-        ...prev[parentField],
-        [childField]: value,
-      },
-    }));
-    setIsDirty(true);
-  };
-
-  const updateDimension = (dimension, value) => {
-    setProduct((prev) => ({
-      ...prev,
-      dimensions: {
-        ...prev.dimensions,
-        [dimension]: value,
-      },
-    }));
     setIsDirty(true);
   };
 
@@ -147,22 +170,18 @@ const ProductAdminPanel = () => {
 
   // Xử lý upload ảnh mới
   const handleImageUpload = ({ file }) => {
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       message.error(`${file.name} không phải là file ảnh`);
       return;
     }
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       message.error(`${file.name} vượt quá 5MB`);
       return;
     }
 
-    // Create preview URL
     const previewUrl = URL.createObjectURL(file);
 
-    // Add to state
     setNewImageFiles((prev) => [...prev, file]);
     setNewImagePreviews((prev) => [...prev, previewUrl]);
     setIsDirty(true);
@@ -170,7 +189,7 @@ const ProductAdminPanel = () => {
     message.success(`Đã thêm ${file.name}`);
   };
 
-  // Xóa ảnh cũ
+  // Xóa ảnh cũ (chỉ xóa khỏi state, sẽ xóa thật khi save)
   const removeExistingImage = (index) => {
     Modal.confirm({
       title: "Xác nhận xóa",
@@ -194,9 +213,7 @@ const ProductAdminPanel = () => {
       cancelText: "Hủy",
       okType: "danger",
       onOk: () => {
-        // Revoke preview URL to free memory
         URL.revokeObjectURL(newImagePreviews[index]);
-
         setNewImageFiles((prev) => prev.filter((_, i) => i !== index));
         setNewImagePreviews((prev) => prev.filter((_, i) => i !== index));
         setIsDirty(true);
@@ -221,39 +238,53 @@ const ProductAdminPanel = () => {
 
     try {
       setSaving(true);
-      console.log("=== DEBUG: Data being sent ===");
-      console.log("Product name:", product.name);
-      console.log("Product slug:", product.slug);                                                                                                                                 
 
       // Tạo FormData
       const formData = new FormData();
 
-      // Thêm thông tin sản phẩm cơ bản
+      // Basic info
       formData.append("name", product.name);
-      formData.append("slug", product.slug);
       formData.append("description", product.description || "");
       formData.append("price", product.price);
       formData.append("compare_price", product.compare_price || 0);
+
+      // Foreign keys
+      if (product.category_id) {
+        formData.append("category_id", product.category_id);
+      }
+      if (product.brand_id) {
+        formData.append("brand_id", product.brand_id);
+      }
+
+      // Product details
       formData.append("material", product.material || "");
       formData.append("care_instructions", product.care_instructions || "");
-      formData.append("is_featured", product.is_featured);
-      formData.append("is_active", product.is_active);                                                                                                                                  
+      if (product.dress_style) {
+        formData.append("dress_style", product.dress_style);
+      }
 
-      // Thêm nested objects dạng JSON
-      formData.append("category", JSON.stringify(product.category || {}));
-      formData.append("brand", JSON.stringify(product.brand || {}));
-      formData.append("dimensions", JSON.stringify(product.dimensions || {}));
-      formData.append("dressStyle", JSON.stringify(product.dressStyle || {}));
+      // Variants - gửi dạng JSON string
       formData.append("variants", JSON.stringify(product.variants || []));
-      formData.append("tags", JSON.stringify(product.tags || []));
 
-      // Thêm ảnh cũ (giữ nguyên URL)
-      formData.append("existing_images", JSON.stringify(existingImages));
+      // Status
+      formData.append("is_featured", product.is_featured ? 1 : 0);
+      formData.append("is_active", product.is_active ? 1 : 0);
 
-      // Thêm ảnh mới (File objects)
-      newImageFiles.forEach((file, index) => {
-        formData.append(`new_images`, file);
+      // Images
+      // existing_images: array of URLs cần giữ lại
+      const existingImageUrls = existingImages.map(img => img.image_url);
+      formData.append("existing_images", JSON.stringify(existingImageUrls));
+
+      // new_images: File objects
+      newImageFiles.forEach((file) => {
+        formData.append("new_images[]", file);
       });
+
+      // Debug log
+      console.log("=== Saving product ===");
+      console.log("Product ID:", product.id);
+      console.log("Existing images:", existingImageUrls);
+      console.log("New images:", newImageFiles.length);
 
       // Gửi request
       await ProductService.updateProduct(product.id, formData);
@@ -261,12 +292,12 @@ const ProductAdminPanel = () => {
       toast.success("Lưu sản phẩm thành công!");
       setIsDirty(false);
 
-      // Cleanup và refresh
+      // Cleanup
       newImagePreviews.forEach((url) => URL.revokeObjectURL(url));
       setNewImageFiles([]);
       setNewImagePreviews([]);
 
-      // Fetch lại data để cập nhật ảnh mới
+      // Refresh data
       await fetchProductData();
     } catch (error) {
       console.error("Save error:", error);
@@ -275,6 +306,8 @@ const ProductAdminPanel = () => {
       setSaving(false);
     }
   };
+      console.log(">>> check product", product);
+
 
   if (loading || !product) {
     return (
@@ -284,21 +317,13 @@ const ProductAdminPanel = () => {
     );
   }
 
-  const totalStock = product.variants.reduce(
-    (sum, v) => sum + (v?.stock || 0),
-    0
-  );
-  const lowStockCount = product.variants.filter(
-    (v) => (v?.stock || 0) < 10 && (v?.stock || 0) > 0
-  ).length;
-  const outOfStockCount = product.variants.filter(
-    (v) => (v?.stock || 0) === 0
-  ).length;
-  const discount =
-    product.compare_price > 0
-      ? Math.round((1 - product.price / product.compare_price) * 100)
-      : 0;
-
+  // Calculate statistics
+  const totalStock = product.variants?.reduce((sum, v) => sum + (v?.stock || 0), 0) || 0;
+  const lowStockCount = product.variants?.filter((v) => (v?.stock || 0) < 10 && (v?.stock || 0) > 0).length || 0;
+  const outOfStockCount = product.variants?.filter((v) => (v?.stock || 0) === 0).length || 0;
+  const discount = product.compare_price > 0
+    ? Math.round((1 - product.price / product.compare_price) * 100)
+    : 0;
   const totalImages = existingImages.length + newImageFiles.length;
 
   const variantColumns = [
@@ -482,27 +507,43 @@ const ProductAdminPanel = () => {
             <Col span={12}>
               <div>
                 <label className="block mb-2 font-medium">Danh mục</label>
-                <Input
+                <Select
                   size="large"
-                  placeholder="Áo thun, Quần jean..."
-                  value={product.category?.name}
-                  onChange={(e) =>
-                    updateNestedField("category", "name", e.target.value)
-                  }
-                />
+                  placeholder="Chọn danh mục"
+                  style={{ width: "100%" }}
+                  value={product.category_id}
+                  onChange={(value) => updateField("category_id", value)}
+                  showSearch
+                  optionFilterProp="children"
+                  allowClear
+                >
+                  {categories.map((cat) => (
+                    <Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Option>
+                  ))}
+                </Select>
               </div>
             </Col>
             <Col span={12}>
               <div>
                 <label className="block mb-2 font-medium">Thương hiệu</label>
-                <Input
+                <Select
                   size="large"
-                  placeholder="Nike, Adidas..."
-                  value={product.brand?.name}
-                  onChange={(e) =>
-                    updateNestedField("brand", "name", e.target.value)
-                  }
-                />
+                  placeholder="Chọn thương hiệu"
+                  style={{ width: "100%" }}
+                  value={product.brand_id}
+                  onChange={(value) => updateField("brand_id", value)}
+                  showSearch
+                  optionFilterProp="children"
+                  allowClear
+                >
+                  {brands.map((brand) => (
+                    <Option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </Option>
+                  ))}
+                </Select>
               </div>
             </Col>
           </Row>
@@ -514,101 +555,55 @@ const ProductAdminPanel = () => {
       label: "Chi tiết sản phẩm",
       children: (
         <div className="space-y-4">
-          <div>
-            <label className="block mb-2 font-medium">Chất liệu</label>
-            <Input
-              size="large"
-              placeholder="Cotton 100%, Polyester..."
-              value={product.material}
-              onChange={(e) => updateField("material", e.target.value)}
-            />
-          </div>
+          <Row gutter={16}>
+            <Col span={12}>
+              <div>
+                <label className="block mb-2 font-medium">Chất liệu</label>
+                <Input
+                  size="large"
+                  placeholder="Cotton 100%, Polyester..."
+                  value={product.material}
+                  onChange={(e) => updateField("material", e.target.value)}
+                />
+              </div>
+            </Col>
+            <Col span={12}>
+              <div>
+                <label className="block mb-2 font-medium">Phong cách</label>
+                <Select
+                  size="large"
+                  placeholder="Chọn phong cách"
+                  style={{ width: "100%" }}
+                  value={product.dressStyle}
+                  onChange={(value) => updateField("dress_style", value)}
+                  allowClear
+                >
+                  {dressStyles.map((style) => (
+                    <Option key={style.value} value={style.value}>
+                      {style.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </Col>
+          </Row>
 
           <div>
             <label className="block mb-2 font-medium">Hướng dẫn bảo quản</label>
             <TextArea
-              rows={3}
-              placeholder="Giặt máy nước lạnh..."
+              rows={4}
+              placeholder="Giặt máy nước lạnh, không sử dụng chất tẩy..."
               value={product.care_instructions}
               onChange={(e) => updateField("care_instructions", e.target.value)}
             />
           </div>
-
-          <Divider>Kích thước</Divider>
-          <Row gutter={16}>
-            <Col span={8}>
-              <div>
-                <label className="block mb-2 font-medium">Dài</label>
-                <Input
-                  size="large"
-                  placeholder="70cm"
-                  value={product.dimensions?.length}
-                  onChange={(e) => updateDimension("length", e.target.value)}
-                />
-              </div>
-            </Col>
-            <Col span={8}>
-              <div>
-                <label className="block mb-2 font-medium">Ngực</label>
-                <Input
-                  size="large"
-                  placeholder="50cm"
-                  value={product.dimensions?.chest}
-                  onChange={(e) => updateDimension("chest", e.target.value)}
-                />
-              </div>
-            </Col>
-            <Col span={8}>
-              <div>
-                <label className="block mb-2 font-medium">Vai</label>
-                <Input
-                  size="large"
-                  placeholder="45cm"
-                  value={product.dimensions?.shoulder}
-                  onChange={(e) => updateDimension("shoulder", e.target.value)}
-                />
-              </div>
-            </Col>
-          </Row>
-
-          <Divider>Phong cách</Divider>
-          <Row gutter={16}>
-            <Col span={12}>
-              <div>
-                <label className="block mb-2 font-medium">Tên phong cách</label>
-                <Input
-                  size="large"
-                  placeholder="Casual, Formal..."
-                  value={product.dressStyle?.name}
-                  onChange={(e) =>
-                    updateNestedField("dressStyle", "name", e.target.value)
-                  }
-                />
-              </div>
-            </Col>
-            <Col span={12}>
-              <div>
-                <label className="block mb-2 font-medium">
-                  Slug phong cách
-                </label>
-                <Input
-                  size="large"
-                  placeholder="casual, formal..."
-                  value={product.dressStyle?.slug}
-                  onChange={(e) =>
-                    updateNestedField("dressStyle", "slug", e.target.value)
-                  }
-                />
-              </div>
-            </Col>
-          </Row>
         </div>
       ),
     },
     {
       key: "variants",
       label: (
-        <Badge count={product.variants.length} offset={[10, 0]}>
+        <Badge count={product.variants?.length || 0} offset={[10, 0]}>
           Biến thể & Kho
         </Badge>
       ),
@@ -643,9 +638,9 @@ const ProductAdminPanel = () => {
 
           <Table
             columns={variantColumns}
-            dataSource={product.variants}
+            dataSource={product.variants || []}
             pagination={false}
-            rowKey={(record, index) => index}
+            rowKey={(record, index) => record.id || index}
             bordered
           />
         </div>
@@ -663,8 +658,7 @@ const ProductAdminPanel = () => {
           <div className="mb-4 flex justify-between items-center">
             <Title level={4}>Hình ảnh sản phẩm</Title>
             <Text type="secondary">
-              {existingImages.length} ảnh hiện tại • {newImageFiles.length} ảnh
-              mới
+              {existingImages.length} ảnh hiện tại • {newImageFiles.length} ảnh mới
             </Text>
           </div>
 
@@ -681,17 +675,15 @@ const ProductAdminPanel = () => {
           <Row gutter={16}>
             {/* Hiển thị ảnh cũ */}
             {existingImages.map((img, index) => (
-              <Col span={6} key={`existing-${index}`} className="mb-4">
+              <Col span={6} key={`existing-${img.id || index}`} className="mb-4">
                 <Card
                   hoverable
                   cover={
                     <Image
                       alt={`Ảnh ${index + 1}`}
-                      src={img}
+                      src={img.image_url}
                       className="h-48 object-cover"
-                      preview={{
-                        mask: "Xem ảnh",
-                      }}
+                      preview={{ mask: "Xem ảnh" }}
                     />
                   }
                   actions={[
@@ -707,7 +699,10 @@ const ProductAdminPanel = () => {
                 >
                   <Card.Meta
                     description={
-                      <Tag color="blue">Ảnh hiện tại #{index + 1}</Tag>
+                      <>
+                        <Tag color="blue">Ảnh hiện tại #{index + 1}</Tag>
+                        {img.is_primary && <Tag color="gold">Primary</Tag>}
+                      </>
                     }
                   />
                 </Card>
@@ -724,9 +719,7 @@ const ProductAdminPanel = () => {
                       alt={`Ảnh mới ${index + 1}`}
                       src={preview}
                       className="h-48 object-cover"
-                      preview={{
-                        mask: "Xem ảnh",
-                      }}
+                      preview={{ mask: "Xem ảnh" }}
                     />
                   }
                   actions={[
@@ -755,10 +748,7 @@ const ProductAdminPanel = () => {
                 beforeUpload={() => false}
                 onChange={handleImageUpload}
               >
-                <Card
-                  hoverable
-                  className="h-full flex items-center justify-center"
-                >
+                <Card hoverable className="h-full flex items-center justify-center">
                   <div className="flex flex-col items-center justify-center h-48 cursor-pointer">
                     <PlusOutlined className="text-3xl mb-2 text-gray-400" />
                     <div className="text-gray-500">Thêm ảnh mới</div>
@@ -773,21 +763,9 @@ const ProductAdminPanel = () => {
     },
     {
       key: "seo",
-      label: "SEO & Cài đặt",
+      label: "Cài đặt",
       children: (
         <div className="space-y-4">
-          <div>
-            <label className="block mb-2 font-medium">Tags</label>
-            <Select
-              mode="tags"
-              size="large"
-              placeholder="Nhập tag và nhấn Enter"
-              style={{ width: "100%" }}
-              value={product.tags}
-              onChange={(value) => updateField("tags", value)}
-            />
-          </div>
-
           <Divider>Cài đặt hiển thị</Divider>
 
           <Row gutter={16}>
@@ -838,7 +816,7 @@ const ProductAdminPanel = () => {
               <Title level={2} className="mb-2">
                 {product.name}
               </Title>
-              <Text type="secondary">ID: {product.id}</Text>
+              <Text type="secondary">Slug: {product.slug}</Text>
               {isDirty && (
                 <div className="mt-2">
                   <Tag color="warning" icon={<ExclamationCircleOutlined />}>
@@ -886,7 +864,6 @@ const ProductAdminPanel = () => {
                 <Statistic
                   title="Giảm giá"
                   value={discount}
-                  // prefix={<PercentageOutlined />}
                   suffix="%"
                   valueStyle={{ color: "#fa8c16" }}
                 />
@@ -906,11 +883,7 @@ const ProductAdminPanel = () => {
         </Card>
 
         <Card className="shadow-sm">
-          <Tabs
-            activeKey={activeTab}
-            onChange={setActiveTab}
-            items={tabItems}
-          />
+          <Tabs activeKey={activeTab} onChange={setActiveTab} items={tabItems} />
         </Card>
       </div>
     </div>

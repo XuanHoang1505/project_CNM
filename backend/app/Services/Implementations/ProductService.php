@@ -5,15 +5,21 @@ use App\Services\Interfaces\ProductServiceInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Services\CloudinaryService;
 use App\Http\Resources\ProductResource;
+use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductVariant;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ProductService implements ProductServiceInterface
 {
     protected $productRepository;
     protected $cloudinaryService;
 
-    public function __construct(ProductRepositoryInterface $productRepository, CloudinaryService $cloudinaryService)
-    {
+    public function __construct(
+        ProductRepositoryInterface $productRepository, 
+        CloudinaryService $cloudinaryService
+    ) {
         $this->productRepository = $productRepository;
         $this->cloudinaryService = $cloudinaryService;
     }
@@ -42,11 +48,10 @@ class ProductService implements ProductServiceInterface
         }
     }
 
-
     public function getProductsByCategory(string $categorySlug, int $page = 1, int $pageSize = 15): array
     {
         try {
-            $products = $this->productRepository->findByCategorySlug($categorySlug, $page, $pageSize );
+            $products = $this->productRepository->findByCategorySlug($categorySlug, $page, $pageSize);
 
             if ($products->isEmpty()) {
                 return [
@@ -87,16 +92,19 @@ class ProductService implements ProductServiceInterface
                 ];
             }
 
+            // Load relationships
+            $product->load(['category', 'brand', 'images', 'variants', 'reviews']);
+
             $relatedProducts = $this->productRepository->getRelatedProducts(
-                $product->_id,
-                $product->category['slug'],
+                $product->id,
+                $product->category_id,
                 6
             );
 
             return [
                 'success' => true,
-                'data' => $product,
-                'related_products' => $relatedProducts
+                'data' => new ProductResource($product),
+                'related_products' => ProductResource::collection($relatedProducts)->resolve()
             ];
         } catch (\Exception $e) {
             Log::error('Error getting product detail', [
@@ -114,7 +122,7 @@ class ProductService implements ProductServiceInterface
     public function filterProducts(array $filters, int $page = 1, int $pageSize = 15): array
     {
         try {
-            $products = $this->productRepository->filter($filters, $page, $pageSize );
+            $products = $this->productRepository->filter($filters, $page, $pageSize);
 
             return [
                 'success' => true,
@@ -170,7 +178,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => true,
-                'data' => $products
+                'data' => ProductResource::collection($products)->resolve()
             ];
         } catch (\Exception $e) {
             Log::error('Error getting featured products', [
@@ -191,7 +199,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => true,
-                'data' => $products
+                'data' => ProductResource::collection($products)->resolve()
             ];
         } catch (\Exception $e) {
             Log::error('Error getting new products', [
@@ -212,7 +220,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => true,
-                'data' => $products
+                'data' => ProductResource::collection($products)->resolve()
             ];
         } catch (\Exception $e) {
             Log::error('Error getting bestseller products', [
@@ -263,7 +271,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => false,
-                'message' => 'Không thể lấy danh sách kiểu váy'
+                'message' => 'Không thể lấy danh sách phong cách'
             ];
         }
     }
@@ -294,38 +302,83 @@ class ProductService implements ProductServiceInterface
         return $this->productRepository->findBySlug($slug);
     }
 
-    public function getProductById (string $id)
+    public function getProductById(int $id)
     {
         return $this->productRepository->findById($id);
     }
 
+    /**
+     * Tạo sản phẩm mới với variants và images
+     */
     public function createProduct(array $data): array
     {
+        DB::beginTransaction();
         $uploadedImageUrls = [];
         
         try {
-            // Upload images nếu có
-            if (isset($data['images']) && is_array($data['images'])) {
-                $uploadedImageUrls = $this->uploadImages($data['images']);
-                $data['images'] = $uploadedImageUrls;
+            $productData = [
+                'name' => $data['name'],
+                'slug' => $data['slug'],
+                'description' => $data['description'] ?? null,
+                'category_id' => $data['category_id'] ?? null,
+                'brand_id' => $data['brand_id'] ?? null,
+                'price' => $data['price'],
+                'compare_price' => $data['compare_price'] ?? null,
+                'material' => $data['material'] ?? null,
+                'care_instructions' => $data['care_instructions'] ?? null,
+                'dress_style' => $data['dress_style'] ?? null,
+                'is_featured' => $data['is_featured'] ?? false,
+                'is_active' => $data['is_active'] ?? true,
+            ];
+
+            $product = Product::create($productData);
+
+            if (isset($data['variants']) && is_array($data['variants'])) {
+                foreach ($data['variants'] as $variantData) {
+                    ProductVariant::create([
+                        'product_id' => $product->id,
+                        'size' => $variantData['size'],
+                        'color' => $variantData['color'],
+                        'stock' => $variantData['stock'],
+                        'price' => $variantData['price'],
+                    ]);
+                }
             }
 
-            $product = $this->productRepository->create($data);
+            if (isset($data['images']) && is_array($data['images'])) {
+                $uploadedImageUrls = $this->uploadImages($data['images']);
+                
+                foreach ($uploadedImageUrls as $index => $imageUrl) {
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'image_url' => $imageUrl,
+                        'is_primary' => $index === 0, 
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            $product->load(['category', 'brand', 'images', 'variants']);
 
             return [
                 'success' => true,
                 'message' => 'Tạo sản phẩm thành công',
-                'data' => $product
+                'data' => new ProductResource($product)
             ];
+
         } catch (\Exception $e) {
-            // Rollback: xóa các ảnh đã upload nếu tạo product thất bại
+            DB::rollBack();
+            
+            // Rollback: xóa các ảnh đã upload
             if (!empty($uploadedImageUrls)) {
                 $this->cleanupImages($uploadedImageUrls);
             }
 
             Log::error('Error creating product', [
                 'data' => $data,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
 
             return [
@@ -335,77 +388,96 @@ class ProductService implements ProductServiceInterface
         }
     }
 
-    public function updateProduct(string $id, array $data): array
+    public function updateProduct(int $id, array $data): array
     {
+        DB::beginTransaction();
         $uploadedImageUrls = [];
         $imagesToDelete = [];
         
         try {
-            $product = $this->productRepository->findById($id);
+            $product = Product::findOrFail($id);
+
+            $updateData = [];
+            $fillableFields = [
+                'name', 'slug', 'description', 'category_id', 'brand_id',
+                'price', 'compare_price', 'material', 'care_instructions',
+                'dress_style', 'is_featured', 'is_active'
+            ];
             
-            if (!$product) {
-                return [
-                    'success' => false,
-                    'message' => 'Không tìm thấy sản phẩm'
-                ];
+            foreach ($fillableFields as $field) {
+                if (array_key_exists($field, $data)) {
+                    $updateData[$field] = $data[$field];
+                }
+            }
+            
+            if (!empty($updateData)) {
+                $product->update($updateData);
+            }
+            
+            // 2. Update variants nếu có
+            if (array_key_exists('variants', $data) && $data['variants'] !== null) {
+                
+                $product->variants()->delete();
+                
+                foreach ($data['variants'] as $variantData) {
+                    ProductVariant::create([
+                        'product_id' => $product->id,
+                        'size' => $variantData['size'],
+                        'color' => $variantData['color'],
+                        'stock' => $variantData['stock'],
+                        'price' => $variantData['price'],
+                    ]);
+                }
             }
 
-            // Lấy ảnh cũ hiện tại
-            $currentImages = $product->images ?? [];
-            
-            // Xử lý ảnh
-            if (isset($data['existing_images']) || isset($data['new_images'])) {
-                // 1. Parse existing_images từ JSON string
-                $existingImages = [];
-                if (isset($data['existing_images'])) {
-                    $existingImages = is_string($data['existing_images']) 
-                        ? json_decode($data['existing_images'], true) 
-                        : $data['existing_images'];
-                }
+            // 3. Xử lý images
+            if (array_key_exists('existing_images', $data) || array_key_exists('new_images', $data)) {
                 
-                // 2. Upload ảnh mới nếu có
-                if (isset($data['new_images']) && is_array($data['new_images'])) {
+                $currentImages = $product->images()->pluck('image_url')->toArray();
+                $existingImages = $data['existing_images'] ?? $currentImages;
+                
+                // Upload ảnh mới
+                if (!empty($data['new_images'])) {
                     $uploadedImageUrls = $this->uploadImages($data['new_images']);
                 }
                 
-                // 3. Merge: existing + newly uploaded
-                $finalImages = array_merge($existingImages, $uploadedImageUrls);
-                $data['images'] = $finalImages;
-                
-                // 4. Tìm ảnh cần xóa (ảnh cũ KHÔNG còn trong existing_images)
+                // Tìm ảnh cần xóa
                 $imagesToDelete = array_diff($currentImages, $existingImages);
+                
+                if (!empty($imagesToDelete)) {
+                    $product->images()->whereIn('image_url', $imagesToDelete)->delete();
+                }
+                
+                // Tạo image records mới
+                foreach ($uploadedImageUrls as $index => $imageUrl) {
+                    ProductImage::create([
+                        'product_id' => $product->id,
+                        'image_url' => $imageUrl,
+                        'is_primary' => $product->images()->count() === 0 && $index === 0,
+                    ]);
+                }
             }
-            
-            // Loại bỏ các key không cần thiết
-            unset($data['existing_images']);
-            unset($data['new_images']);
 
-            // Update product
-            $updated = $this->productRepository->update($id, $data);
+            DB::commit();
 
-            // Xóa ảnh cũ đã bị remove trên Cloudinary
             if (!empty($imagesToDelete)) {
                 $this->cleanupImages($imagesToDelete);
             }
 
+            $product->load(['category', 'brand', 'images', 'variants']);
+
             return [
                 'success' => true,
                 'message' => 'Cập nhật sản phẩm thành công',
-                'data' => $updated
+                'data' => new ProductResource($product)
             ];
             
         } catch (\Exception $e) {
-            // Rollback: xóa ảnh mới đã upload nếu update thất bại
+            DB::rollBack();
+            
             if (!empty($uploadedImageUrls)) {
                 $this->cleanupImages($uploadedImageUrls);
             }
-
-            Log::error('Error updating product', [
-                'id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-
             return [
                 'success' => false,
                 'message' => 'Không thể cập nhật sản phẩm: ' . $e->getMessage()
@@ -414,21 +486,21 @@ class ProductService implements ProductServiceInterface
     }
 
     /**
-     * Upload nhiều ảnh
+     * Upload nhiều ảnh lên Cloudinary
      */
-   private function uploadImages(array $images): array
+    private function uploadImages(array $images): array
     {
         $uploadedUrls = [];
         
-        foreach ($images as $imageData) {
+        foreach ($images as $image) {
             // Nếu là URL (ảnh cũ), giữ nguyên
-            if (is_string($imageData) && filter_var($imageData, FILTER_VALIDATE_URL)) {
-                $uploadedUrls[] = $imageData;
+            if (is_string($image) && filter_var($image, FILTER_VALIDATE_URL)) {
+                $uploadedUrls[] = $image;
                 continue;
             }
 
-            // Upload ảnh mới (base64 hoặc file)
-            $uploadedUrl = $this->cloudinaryService->uploadImage($imageData, 'products');
+            // Upload ảnh mới (File object từ FormData)
+            $uploadedUrl = $this->cloudinaryService->uploadImage($image, 'products');
             
             if ($uploadedUrl) {
                 $uploadedUrls[] = $uploadedUrl;
@@ -438,9 +510,6 @@ class ProductService implements ProductServiceInterface
         return $uploadedUrls;
     }
 
-    /**
-     * Xóa nhiều ảnh trên Cloudinary
-     */
     private function cleanupImages(array $imageUrls): void
     {
         foreach ($imageUrls as $url) {
@@ -458,17 +527,18 @@ class ProductService implements ProductServiceInterface
         }
     }
 
-    public function deleteProduct(string $id): array
+    /**
+     * Xóa sản phẩm (soft delete)
+     */
+    public function deleteProduct(int $id): array
     {
         try {
-            $deleted = $this->productRepository->delete($id);
+            $product = Product::findOrFail($id);
+            
+            $product->delete();
 
-            if (!$deleted) {
-                return [
-                    'success' => false,
-                    'message' => 'Không tìm thấy sản phẩm'
-                ];
-            }
+            $imageUrls = $product->images()->pluck('image_url')->toArray();
+            $this->cleanupImages($imageUrls);
 
             return [
                 'success' => true,
@@ -487,18 +557,31 @@ class ProductService implements ProductServiceInterface
         }
     }
 
-    public function checkStock(string $id, int $quantity = 1): array
+    public function checkStock(int $productId, int $variantId, int $quantity = 1): array
     {
         try {
-            $inStock = $this->productRepository->isInStock($id, $quantity);
+            $variant = ProductVariant::where('product_id', $productId)
+                ->where('id', $variantId)
+                ->first();
+
+            if (!$variant) {
+                return [
+                    'success' => false,
+                    'message' => 'Không tìm thấy biến thể'
+                ];
+            }
+
+            $inStock = $variant->stock >= $quantity;
 
             return [
                 'success' => true,
-                'in_stock' => $inStock
+                'in_stock' => $inStock,
+                'available_stock' => $variant->stock
             ];
         } catch (\Exception $e) {
             Log::error('Error checking stock', [
-                'id' => $id,
+                'product_id' => $productId,
+                'variant_id' => $variantId,
                 'quantity' => $quantity,
                 'error' => $e->getMessage()
             ]);

@@ -9,6 +9,7 @@ use App\Http\Requests\Product\UpdateProductRequest;
 use App\Http\Resources\ProductResource;
 use App\Services\Interfaces\ProductServiceInterface;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class ProductController extends Controller
 {
@@ -108,7 +109,7 @@ class ProductController extends Controller
         return new ProductResource($product);
     }
 
-        public function findById ($id)
+    public function findById ($id)
     {
         $product = $this->productService->getProductById($id);
         return new ProductResource($product);
@@ -121,7 +122,7 @@ class ProductController extends Controller
         return response()->json($result, $status);
     }
 
-    public function update(UpdateProductRequest $request, string $id)
+    public function update(UpdateProductRequest $request, int $id)
     {
         $result = $this->productService->updateProduct($id, $request->validated());
         
@@ -129,7 +130,7 @@ class ProductController extends Controller
         return response()->json($result, $status);
     }
 
-    public function destroy(string $id)
+    public function destroy(int $id)
     {
         $result = $this->productService->deleteProduct($id);
         
@@ -137,7 +138,7 @@ class ProductController extends Controller
         return response()->json($result, $status);
     }
 
-    public function checkStock(string $id, Request $request)
+    public function checkStock(int $id, Request $request)
     {
         $quantity = $request->input('quantity', 1);
         
