@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\AddressController;
+use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CategoryController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AuthController;
@@ -28,7 +30,7 @@ Route::prefix('auth')->group(function () {
 
 
 Route::get('/categories', [ProductController::class, 'categories']);
-Route::get('/dress-styles', [ProductController::class, 'dressStyles']); 
+Route::get('/dress-styles', [ProductController::class, 'dressStyles']);
 Route::get('/brands', [ProductController::class, 'brands']);
 
 
@@ -39,27 +41,27 @@ Route::prefix('products')->group(function () {
     Route::get('/new', [ProductController::class, 'newProducts']);
     Route::get('/bestseller', [ProductController::class, 'bestseller']);
     Route::get('/price-range', [ProductController::class, 'getByPriceRange']);
-    Route::get('/search', [ProductController::class, 'search'] );
-    Route::get('/filters', [ProductController::class, 'filters']); 
+    Route::get('/search', [ProductController::class, 'search']);
+    Route::get('/filters', [ProductController::class, 'filters']);
     Route::get('/category/{slug}', [ProductController::class, 'getByCategory']);
 
     Route::get('/{id}/check-stock', [ProductController::class, 'checkStock']);
-    Route::get('/{id}', [ProductController::class, 'findById']); 
-    Route::get('/slug/{slug}', [ProductController::class, 'findBySlug']); 
+    Route::get('/{id}', [ProductController::class, 'findById']);
+    Route::get('/slug/{slug}', [ProductController::class, 'findBySlug']);
 
-    
+
     // ===== ADMIN ROUTES =====
     // Route::middleware(['auth:api', 'admin'])->group(function () {
-        Route::post('/', [ProductController::class, 'store']);
-        Route::put('/{id}', [ProductController::class, 'update']);
-        Route::delete('/{id}', [ProductController::class, 'destroy']);
+    Route::post('/', [ProductController::class, 'store']);
+    Route::put('/{id}', [ProductController::class, 'update']);
+    Route::delete('/{id}', [ProductController::class, 'destroy']);
 
     // });
 });
 
 Route::prefix('orders')->group(function () {
     Route::get('/', [OrderController::class, 'index']);
-    Route::get('/by-email', [OrderController::class, 'getOrderByEmail']); 
+    Route::get('/by-email', [OrderController::class, 'getOrderByEmail']);
     Route::post('/', [OrderController::class, 'store']);
     Route::get('/statistics', [OrderController::class, 'statistics']);
     Route::get('/search', [OrderController::class, 'search']);
@@ -76,7 +78,7 @@ Route::prefix('orders')->group(function () {
 
 
 Route::prefix('discounts')->group(function () {
-      Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::middleware(['auth:api', 'admin'])->group(function () {
         // CRUD operations
     });
 });
@@ -89,8 +91,8 @@ Route::get('/provinces', [AddressController::class, 'getProvinces']);
 Route::get('/provinces/{code}/wards', [AddressController::class, 'getWards']);
 
 Route::post('/reviews', [ReviewController::class, 'createReview']);
-Route::get( '/reviews/{productId}', [ReviewController::class,'getProductByIdProduct']);
-Route::get( '/review/order/{orderId}', [ReviewController::class,'getReviewByOrderId']);
+Route::get('/reviews/{productId}', [ReviewController::class, 'getProductByIdProduct']);
+Route::get('/review/order/{orderId}', [ReviewController::class, 'getReviewByOrderId']);
 
 Route::prefix('admin/users')->group(function () {
     Route::get('/', [UserController::class, 'index']);
@@ -100,13 +102,13 @@ Route::prefix('admin/users')->group(function () {
     Route::delete('/{user}', [UserController::class, 'destroy']);
 });
 
-Route::post('/vnpay_payment',[CheckoutController::class,'vnpay_payment']);
+Route::post('/vnpay_payment', [CheckoutController::class, 'vnpay_payment']);
 Route::get('/vnpay-return', [CheckoutController::class, 'vnpay_return']);
 Route::get('/orders/{order_code}', [CheckoutController::class, 'getOrder']);
 Route::post('/order-cod', [CheckoutController::class, 'createOrderCOD']);
 
 
-Route::get('/shipping-fees', [ShippingFeeController::class,'getAll']);
+Route::get('/shipping-fees', [ShippingFeeController::class, 'getAll']);
 
 Route::prefix('admin/shipping-fees')->group(function () {
     Route::get('/', action: [ShippingFeeController::class, 'index']);
@@ -115,4 +117,23 @@ Route::prefix('admin/shipping-fees')->group(function () {
     Route::get('/{id}', [ShippingFeeController::class, 'show']);
     Route::put('/{id}', [ShippingFeeController::class, 'update']);
     Route::delete('/{id}', [ShippingFeeController::class, 'destroy']);
+});
+
+Route::prefix('admin')->group(function () {
+
+    // ===== BRAND =====
+    Route::get('brands', [BrandController::class, 'index']);
+    Route::post('brands', [BrandController::class, 'store']);
+    Route::put('brands/{brand}', [BrandController::class, 'update']);
+    Route::delete('brands/{brand}', [BrandController::class, 'destroy']);
+    Route::patch('brands/{brand}/restore', [BrandController::class, 'restore']);
+    Route::get('brands/trashed', [BrandController::class, 'trashed']);
+
+    // ===== CATEGORY =====
+    Route::get('categories', [CategoryController::class, 'index']);
+    Route::post('categories', [CategoryController::class, 'store']);
+    Route::put('categories/{category}', [CategoryController::class, 'update']);
+    Route::delete('categories/{category}', [CategoryController::class, 'destroy']);
+    Route::patch('categories/{category}/restore', [CategoryController::class, 'restore']);
+    Route::get('categories/trashed', [CategoryController::class, 'trashed']);
 });
