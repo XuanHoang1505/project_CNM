@@ -49,13 +49,21 @@ class OrderController extends Controller
     public function store(CreateOrderRequest $request)
     {
         try {
-            $order = $this->orderService->createOrder($request->validated());
+            $data = $request->validated();
+            
+            $user = auth('api')->user(); 
+            
+            
+            $data['user_id'] = $user->id;
+            
+            $order = $this->orderService->createOrder($data);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Order created successfully',
                 'data' => $order
             ], 201);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

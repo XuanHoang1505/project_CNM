@@ -16,6 +16,7 @@ Route::prefix('auth')->group(function () {
     Route::post('verify-email-otp', [AuthController::class, 'verifyEmailOtp']);
     Route::post('login', [AuthController::class, 'login']);
     Route::post('logout', [AuthController::class, 'logout']);
+    Route::post('refresh', [AuthController::class, 'refreshToken']);
 
     Route::post('forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('verify-otp', [AuthController::class, 'verifyResetPasswordOtp']);
@@ -60,7 +61,9 @@ Route::prefix('products')->group(function () {
 Route::prefix('orders')->group(function () {
     Route::get('/', [OrderController::class, 'index']);
     Route::get('/by-email', [OrderController::class, 'getOrderByEmail']); 
-    Route::post('/', [OrderController::class, 'store']);
+    Route::middleware('jwt.verify')->group(function () {    
+        Route::post('/', [OrderController::class, 'store']);
+    });
     Route::get('/statistics', [OrderController::class, 'statistics']);
     Route::get('/search', [OrderController::class, 'search']);
     Route::get('/code/{orderCode}', [OrderController::class, 'getByOrderCode']);

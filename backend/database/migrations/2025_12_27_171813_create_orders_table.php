@@ -30,7 +30,8 @@ return new class extends Migration
             $table->unsignedBigInteger('discount')->default(0);     // cents
             $table->unsignedBigInteger('delivery_fee')->default(0);// cents
             $table->unsignedBigInteger('total')->default(0);        // cents
-
+            
+            $table->softDeletes(); 
             $table->timestamps();
         });
     }

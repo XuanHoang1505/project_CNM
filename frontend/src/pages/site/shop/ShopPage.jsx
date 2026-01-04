@@ -97,10 +97,15 @@ function ShopPage() {
 
       //LẤY ẢNH PRIMARY
       const productsWithPrimaryImage = (result.data || []).map((product) => {
-        const primaryImage =
-          product.images?.find((img) => img.is_primary === 1) ||
-          product.images?.[0] ||
-          null;
+        // Tìm primary image hoặc lấy ảnh đầu tiên
+        let primaryImage = null;
+        if (product.images && Array.isArray(product.images) && product.images.length > 0) {
+          primaryImage = product.images.find((img) => {
+            // Xử lý cả object và array format
+            const isPrimary = img?.is_primary === 1 || img?.is_primary === true;
+            return isPrimary;
+          }) || product.images[0];
+        }
 
         return {
           ...product,
@@ -507,9 +512,12 @@ function ShopPage() {
                   >
                     <div className="aspect-square bg-gray-100 overflow-hidden">
                       <img
-                        src={product.primaryImage.image_url}
+                        src={product.primaryImage?.image_url || product.primaryImage?.url || '/placeholder-image.jpg'}
                         alt={product.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.src = '/placeholder-image.jpg';
+                        }}
                       />
                     </div>
                     <div className="p-4">
