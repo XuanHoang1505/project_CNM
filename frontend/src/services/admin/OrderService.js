@@ -122,7 +122,6 @@ const updateOrder = async (id, orderData) => {
   }
 };
 
-// 🔄 Cập nhật trạng thái đơn hàng
 const updateOrderStatus = async (id, status) => {
   try {
     const response = await axiosInstance.patch(
@@ -137,7 +136,6 @@ const updateOrderStatus = async (id, status) => {
   }
 };
 
-// 💳 Cập nhật trạng thái thanh toán
 const updatePaymentStatus = async (id, paymentStatus) => {
   try {
     const response = await axiosInstance.patch(
@@ -154,7 +152,6 @@ const updatePaymentStatus = async (id, paymentStatus) => {
   }
 };
 
-// ❌ Hủy đơn hàng
 const cancelOrder = async (id, reason = null) => {
   try {
     const response = await axiosInstance.post(`${API_URL}/${id}/cancel`, {
@@ -168,7 +165,6 @@ const cancelOrder = async (id, reason = null) => {
   }
 };
 
-// ✅ Hoàn thành đơn hàng
 const completeOrder = async (id) => {
   try {
     const response = await axiosInstance.post(`${API_URL}/${id}/complete`);
@@ -180,7 +176,6 @@ const completeOrder = async (id) => {
   }
 };
 
-// 🗑️ Xóa đơn hàng
 const deleteOrder = async (id) => {
   try {
     const response = await axiosInstance.delete(`${API_URL}/${id}`);
@@ -192,9 +187,7 @@ const deleteOrder = async (id) => {
   }
 };
 
-// 📦 Export tất cả các functions
 const OrderService = {
-  // GET methods
   getOrders,
   getOrderById,
   getOrderByEmail,
@@ -203,13 +196,11 @@ const OrderService = {
   searchOrders,
   getStatistics,
 
-  // POST/PUT methods
   createOrder,
   updateOrder,
   updateOrderStatus,
   updatePaymentStatus,
 
-  // Action methods
   cancelOrder,
   completeOrder,
   deleteOrder,

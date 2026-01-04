@@ -10,92 +10,60 @@ class UpdateProductRequest extends BaseRequest
 {
     public function rules(): array
     {
-        // Lấy ID từ route parameter
         $productId = $this->route('id');
 
         return [
-            // ===== THÔNG TIN CƠ BẢN =====
             'name' => 'sometimes|string|max:255',
             'slug' => [
                 'sometimes',
                 'string',
                 'max:255',
-                Rule::unique('products', 'slug')->ignore($productId, '_id')
+                Rule::unique('products', 'slug')->ignore($productId, 'id')
             ],
             'description' => 'sometimes|nullable|string',
             
-            // ===== CATEGORY (Embedded Object) =====
-            'category' => 'sometimes|nullable|array',
-            'category.name' => 'sometimes|string|max:255',
-            'category.slug' => 'sometimes|string|max:255',
+            'category_id' => 'sometimes|nullable|exists:categories,id',
+            'brand_id' => 'sometimes|nullable|exists:brands,id',
             
-            // ===== BRAND (Embedded Object) =====
-            'brand' => 'sometimes|nullable|array',
-            'brand.name' => 'sometimes|string|max:255',
-            'brand.slug' => 'sometimes|string|max:255',
+            'price' => 'sometimes|integer|min:0',
+            'compare_price' => 'sometimes|nullable|integer|min:0',
             
-            // ===== GIÁ =====
-            'price' => 'sometimes|numeric|min:0',
-            'compare_price' => 'sometimes|nullable|numeric|min:0',
+            'material' => 'sometimes|nullable|string|max:255',
+            'care_instructions' => 'sometimes|nullable|string',
+            'dress_style' => 'sometimes|nullable|string|max:100',
             
-            // ===== HÌNH ẢNH (Array of strings) =====
-            'images' => 'sometimes|nullable|array',
-            'images.*' => 'url',
-            
-            // ===== BIẾN THỂ (Array of objects) =====
             'variants' => 'sometimes|nullable|array',
             'variants.*.size' => 'required|string|max:50',
             'variants.*.color' => 'required|string|max:50',
             'variants.*.stock' => 'required|integer|min:0',
-            'variants.*.price' => 'required|numeric|min:0',
+            'variants.*.price' => 'required|integer|min:0',
             
-            // ===== CHI TIẾT SẢN PHẨM =====
-            'tags' => 'sometimes|nullable|array',
-            'tags.*' => 'string|max:50',
-            'material' => 'sometimes|nullable|string|max:255',
-            'care_instructions' => 'sometimes|nullable|string',
+            'existing_images' => 'sometimes|nullable|array',
+            'existing_images.*' => 'url',
             
-            // ===== KÍCH THƯỚC (Dimensions - cho phép string) =====
-            // Dựa theo data: waist, length, legOpening, chest, shoulder
-            'dimensions' => 'sometimes|nullable|array',
-            'dimensions.length' => 'sometimes|nullable|string|max:50',
-            'dimensions.chest' => 'sometimes|nullable|string|max:50',
-            'dimensions.shoulder' => 'sometimes|nullable|string|max:50',
-            'dimensions.waist' => 'sometimes|nullable|string|max:50',
-            'dimensions.legOpening' => 'sometimes|nullable|string|max:50',
+            'new_images' => 'sometimes|nullable|array',
+            'new_images.*' => 'file|image|mimes:jpeg,png,jpg,webp,gif|max:5120',
             
-            // ===== DRESS STYLE (Embedded Object) =====
-            'dressStyle' => 'sometimes|nullable|array',
-            'dressStyle.name' => 'sometimes|string|max:255',
-            'dressStyle.slug' => 'sometimes|string|max:255',
-            
-            // ===== TRẠNG THÁI =====
             'is_featured' => 'sometimes|boolean',
             'is_active' => 'sometimes|boolean',
-            'is_new' => 'sometimes|nullable|boolean',
-            'is_bestseller' => 'sometimes|nullable|boolean',
         ];
     }
 
     public function messages(): array
     {
         return [
-            // Basic
             'name.string' => 'Tên sản phẩm phải là chuỗi ký tự',
             'name.max' => 'Tên sản phẩm không được vượt quá 255 ký tự',
             'slug.unique' => 'Slug đã tồn tại, vui lòng chọn slug khác',
             
-            // Price
-            'price.numeric' => 'Giá phải là số',
+            'category_id.exists' => 'Danh mục không tồn tại',
+            'brand_id.exists' => 'Thương hiệu không tồn tại',
+            
+            'price.integer' => 'Giá phải là số nguyên',
             'price.min' => 'Giá phải lớn hơn hoặc bằng 0',
-            'compare_price.numeric' => 'Giá so sánh phải là số',
+            'compare_price.integer' => 'Giá so sánh phải là số nguyên',
             'compare_price.min' => 'Giá so sánh phải lớn hơn hoặc bằng 0',
             
-            // Images
-            'images.array' => 'Hình ảnh phải là một mảng',
-            'images.*.url' => 'URL hình ảnh không hợp lệ',
-            
-            // Variants
             'variants.array' => 'Biến thể phải là một mảng',
             'variants.*.size.required' => 'Kích thước biến thể là bắt buộc',
             'variants.*.color.required' => 'Màu sắc biến thể là bắt buộc',
@@ -103,40 +71,171 @@ class UpdateProductRequest extends BaseRequest
             'variants.*.stock.integer' => 'Số lượng tồn kho phải là số nguyên',
             'variants.*.stock.min' => 'Số lượng tồn kho phải lớn hơn hoặc bằng 0',
             'variants.*.price.required' => 'Giá biến thể là bắt buộc',
-            'variants.*.price.numeric' => 'Giá biến thể phải là số',
+            'variants.*.price.integer' => 'Giá biến thể phải là số nguyên',
             'variants.*.price.min' => 'Giá biến thể phải lớn hơn hoặc bằng 0',
             
-            // Tags
-            'tags.array' => 'Tags phải là một mảng',
-            'tags.*.string' => 'Mỗi tag phải là chuỗi ký tự',
-            'tags.*.max' => 'Mỗi tag không được vượt quá 50 ký tự',
-            
-            // Category
-            'category.name.string' => 'Tên danh mục phải là chuỗi ký tự',
-            'category.slug.string' => 'Slug danh mục phải là chuỗi ký tự',
-            
-            // Brand
-            'brand.name.string' => 'Tên thương hiệu phải là chuỗi ký tự',
-            'brand.slug.string' => 'Slug thương hiệu phải là chuỗi ký tự',
-            
-            // DressStyle
-            'dressStyle.name.string' => 'Tên phong cách phải là chuỗi ký tự',
-            'dressStyle.slug.string' => 'Slug phong cách phải là chuỗi ký tự',
+            'existing_images.array' => 'Danh sách ảnh hiện tại phải là một mảng',
+            'existing_images.*.url' => 'URL ảnh không hợp lệ',
+            'new_images.array' => 'Danh sách ảnh mới phải là một mảng',
+            'new_images.*.file' => 'File phải là một file hợp lệ',
+            'new_images.*.image' => 'File phải là ảnh',
+            'new_images.*.mimes' => 'Ảnh phải có định dạng: jpeg, png, jpg, webp, gif',
+            'new_images.*.max' => 'Kích thước ảnh tối đa 5MB',
         ];
     }
 
     protected function prepareForValidation()
     {
-        // Auto-generate slug từ name nếu name được update nhưng không có slug
+        if (is_string($this->variants)) {
+            $this->merge(['variants' => json_decode($this->variants, true)]);
+        }
+        
+        if (is_string($this->existing_images)) {
+            $this->merge(['existing_images' => json_decode($this->existing_images, true)]);
+        }
+        
+        if ($this->variants && is_array($this->variants)) {
+            $variants = array_map(function($variant) {
+                return [
+                    'size' => $variant['size'] ?? '',
+                    'color' => $variant['color'] ?? '',
+                    'stock' => isset($variant['stock']) ? (int) $variant['stock'] : 0,
+                    'price' => isset($variant['price']) ? (int) $variant['price'] : 0,
+                ];
+            }, $this->variants);
+            
+            $this->merge(['variants' => $variants]);
+        }
+        
+        // Cast price về integer
+        if ($this->has('price')) {
+            $this->merge(['price' => (int) $this->price]);
+        }
+        
+        if ($this->has('compare_price')) {
+            $this->merge(['compare_price' => $this->compare_price ? (int) $this->compare_price : null]);
+        }
+        
+        // Cast IDs về integer
+        if ($this->has('category_id') && $this->category_id) {
+            $this->merge(['category_id' => (int) $this->category_id]);
+        }
+        
+        if ($this->has('brand_id') && $this->brand_id) {
+            $this->merge(['brand_id' => (int) $this->brand_id]);
+        }
+        
         if ($this->has('name') && !$this->has('slug')) {
             $this->merge([
-                'slug' => Str::slug($this->name)
+                'slug' => $this->generateUniqueSlug($this->name)
             ]);
+        }
+        
+        if ($this->has('is_featured')) {
+            $this->merge(['is_featured' => $this->convertToBoolean($this->is_featured)]);
+        }
+        
+        if ($this->has('is_active')) {
+            $this->merge(['is_active' => $this->convertToBoolean($this->is_active)]);
         }
     }
 
     /**
-     * Get custom attributes for validator errors.
+     * Generate unique slug
+     */
+    private function generateUniqueSlug(string $name): string
+    {
+        $slug = Str::slug($name);
+        $originalSlug = $slug;
+        $count = 1;
+        
+        $productId = $this->route('id');
+        
+        while (\App\Models\Product::where('slug', $slug)
+            ->where('id', '!=', $productId)
+            ->exists()
+        ) {
+            $slug = $originalSlug . '-' . $count;
+            $count++;
+        }
+        
+        return $slug;
+    }
+
+    /**
+     * Convert giá trị sang boolean
+     */
+    private function convertToBoolean($value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+        
+        if (is_string($value)) {
+            return in_array(strtolower($value), ['1', 'true', 'yes', 'on'], true);
+        }
+        
+        return (bool) $value;
+    }
+
+    /**
+     * Get validated data để update product
+     */
+    public function getProductData(): array
+    {
+        $data = [];
+        
+        // Chỉ lấy các field có trong request
+        $fillableFields = [
+            'name',
+            'slug', 
+            'description',
+            'category_id',
+            'brand_id',
+            'price',
+            'compare_price',
+            'material',
+            'care_instructions',
+            'dress_style',
+            'is_featured',
+            'is_active',
+        ];
+        
+        foreach ($fillableFields as $field) {
+            if ($this->has($field)) {
+                $data[$field] = $this->input($field);
+            }
+        }
+        
+        return $data;
+    }
+
+    /**
+     * Get variants data
+     */
+    public function getVariantsData(): ?array
+    {
+        return $this->has('variants') ? $this->validated()['variants'] : null;
+    }
+
+    /**
+     * Get existing images URLs
+     */
+    public function getExistingImages(): ?array
+    {
+        return $this->has('existing_images') ? $this->input('existing_images') : null;
+    }
+
+    /**
+     * Get new images files
+     */
+    public function getNewImages(): array
+    {
+        return $this->file('new_images', []);
+    }
+
+    /**
+     * Get custom attributes for validator errors
      */
     public function attributes(): array
     {
@@ -148,9 +247,9 @@ class UpdateProductRequest extends BaseRequest
             'compare_price' => 'giá so sánh',
             'material' => 'chất liệu',
             'care_instructions' => 'hướng dẫn bảo quản',
-            'category.name' => 'tên danh mục',
-            'brand.name' => 'tên thương hiệu',
-            'dressStyle.name' => 'tên phong cách',
+            'dress_style' => 'phong cách',
+            'category_id' => 'danh mục',
+            'brand_id' => 'thương hiệu',
             'is_featured' => 'sản phẩm nổi bật',
             'is_active' => 'trạng thái kích hoạt',
         ];

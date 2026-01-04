@@ -20,7 +20,7 @@ class CreateOrderRequest extends BaseRequest
             'shipping_address.note' => 'nullable|string',
 
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer',
+            'items.*.product_id' => 'required|integer|exists:products,id',
             'items.*.name' => 'required|string',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric',

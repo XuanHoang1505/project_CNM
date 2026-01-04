@@ -92,12 +92,14 @@ class OrderRepository implements OrderRepositoryInterface
             $query->where('payment_status', $filters['payment_status']);
         }
 
+        // Đã sửa: từ customer_info->email sang email
         if (isset($filters['email'])) {
-            $query->where('customer_info->email', 'like', '%' . $filters['email'] . '%');
+            $query->where('email', 'like', '%' . $filters['email'] . '%');
         }
 
+        // Đã sửa: từ customer_info->phone sang phone
         if (isset($filters['phone'])) {
-            $query->where('customer_info->phone', 'like', '%' . $filters['phone'] . '%');
+            $query->where('phone', 'like', '%' . $filters['phone'] . '%');
         }
 
         if (isset($filters['start_date']) && isset($filters['end_date'])) {
@@ -149,12 +151,12 @@ class OrderRepository implements OrderRepositoryInterface
 
     public function getOrderWithItems(string $id)
     {
-        return Order::find($id);
+        return Order::with('items')->find($id);
     }
 
     public function getOrderWithUser(string $id)
     {
-        return Order::find($id);
+        return Order::with('user')->find($id);
     }
 
     public function getTotalRevenue(array $filters = [])
@@ -187,8 +189,10 @@ class OrderRepository implements OrderRepositoryInterface
         return Order::onlyTrashed()->latest()->get();
     }
 
-    public function getOrderByEmail(string $email){
-       return Order::where('customer_info->email', $email)
-                    ->orderBy('created_at', 'desc')->get();
-    } 
+    public function getOrderByEmail(string $email)
+    {
+        return Order::where('email', $email)
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
 }

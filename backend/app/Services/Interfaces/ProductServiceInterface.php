@@ -17,9 +17,9 @@ interface ProductServiceInterface
     public function getAllDressStyles(): array;
     public function getAllBrands(): array;
     public function createProduct(array $data): array;
-    public function updateProduct(string $id, array $data): array;
-    public function deleteProduct(string $id): array;
-    public function checkStock(string $id, int $quantity = 1): array;
+    public function updateProduct(int $id, array $data): array;
+    public function deleteProduct(int $id): array;
+    public function checkStock(int $productId, int $variantId, int $quantity = 1): array;
     public function getProductBySlug (string $slug);
-    public function getProductById (string $id);
+    public function getProductById (int $id);
 }

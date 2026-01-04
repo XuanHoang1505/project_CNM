@@ -100,37 +100,9 @@ const filtersProduct = async (current = 1, pageSize = 9, filters = {}) => {
   }
 };
 
-const appendFormData = (formData, data, parentKey = '') => {
-  if (data instanceof File) {
-    formData.append(parentKey, data);
-  } else if (Array.isArray(data)) {
-    data.forEach((item, index) => {
-      const key = `${parentKey}[${index}]`;
-      if (item instanceof File) {
-        formData.append(`${parentKey}[]`, item);
-      } else if (typeof item === 'object' && item !== null) {
-        appendFormData(formData, item, key);
-      } else {
-        formData.append(`${parentKey}[]`, item);
-      }
-    });
-  } else if (typeof data === 'object' && data !== null) {
-    Object.keys(data).forEach(key => {
-      const value = data[key];
-      const formKey = parentKey ? `${parentKey}[${key}]` : key;
-      appendFormData(formData, value, formKey);
-    });
-  } else {
-    formData.append(parentKey, data);
-  }
-};
 
-// Sử dụng:
-const createProduct = async (productData) => {
+const createProduct = async (formData) => {
   try {
-    const formData = new FormData();
-    appendFormData(formData, productData);
-
     const response = await axiosInstance.post(API_URL, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -142,31 +114,20 @@ const createProduct = async (productData) => {
     handleErrorResponse(error);
     throw error;
   }
-};
+}
 
-// ✏️ Cập nhật sản phẩm
 const updateProduct = async (id, productData) => {
   try {
-    // Kiểm tra nếu có file thì dùng FormData
-    let dataToSend = productData;
-    let headers = {};
-
-    // Nếu productData là FormData thì giữ nguyên
     if (productData instanceof FormData) {
-      dataToSend = productData;
-      headers = {
-        'Content-Type': 'multipart/form-data'
-      };
+      productData.append('_method', 'PUT');
+      const response = await axiosInstance.post(`${API_URL}/${id}`, productData);
+      return response.data;
     }
-
-    const response = await axiosInstance.put(`${API_URL}/${id}`, dataToSend, {
-      headers
-    });
     
+    const response = await axiosInstance.put(`${API_URL}/${id}`, productData);
     return response.data;
   } catch (error) {
     handleErrorResponse(error);
-    console.error(`Lỗi khi cập nhật sản phẩm ID: ${id}`, error);
     throw error;
   }
 };

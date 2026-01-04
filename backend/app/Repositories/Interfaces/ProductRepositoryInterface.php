@@ -5,7 +5,7 @@ namespace App\Repositories\Interfaces;
 interface ProductRepositoryInterface
 {
     public function getAll(int $page = 1, int $perPage = 9);
-    public function findById(string $id);
+    public function findById(int $id);
     public function findBySlug(string $slug);
     public function findByCategorySlug(string $categorySlug, int $page, int $perPage = 15);
     public function findByCategoryName(string $categoryName, int $perPage = 15);
@@ -18,19 +18,19 @@ interface ProductRepositoryInterface
     public function getAllCategories();
     public function getAllDressStyles();
     public function getAllBrands();
-    public function getRelatedProducts(string $productId, string $categorySlug, int $limit = 6);
+    public function getRelatedProducts(int $productId, int $categoryId, int $limit = 6);
     public function create(array $data);
-    public function update(string $id, array $data);
-    public function delete(string $id);
-    public function forceDelete(string $id);
-    public function updateStock(string $id, int $quantity);
-    public function decreaseStock(string $id, int $quantity);
-    public function increaseStock(string $id, int $quantity);
+    public function update(int $id, array $data);
+    public function delete(int $id);
+    public function forceDelete(int $id);
+    public function updateStock(int $id, int $quantity);
+    public function decreaseStock(int $id, int $quantity);
+    public function increaseStock(int $id, int $quantity);
 
     /**
      * Kiểm tra sản phẩm có còn hàng không
      */
-    public function isInStock(string $id, int $quantity = 1);
+    public function isInStock(int $id, int $quantity = 1);
 
     /**
      * Lấy sản phẩm theo khoảng giá

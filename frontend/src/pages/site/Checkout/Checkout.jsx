@@ -28,6 +28,7 @@ function Checkout() {
     const [isProcessing, setIsProcessing] = useState(false);
 
     const userDetail = JSON.parse(localStorage.getItem("userDetail") || "{}");
+    console.log(userDetail);
     const email = userDetail.email || "";
 
     useEffect(() => {
@@ -74,6 +75,7 @@ function Checkout() {
 
         return basicInfoValid;
     };
+
 
     const handlePlaceOrder = async () => {
         if (!isFormValid()) {
