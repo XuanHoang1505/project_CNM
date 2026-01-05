@@ -62,9 +62,11 @@ const Header = () => {
     dispatch(closeModal("showForgotPasswordModal"));
     dispatch(openModal("showVerifyOtpModal"));
   };
+  console.log(user);
+  
 
   const handleLogout = async () => {
-    logout(user.userId);
+    logout(user.id);
     updateUser(null);
     navigate("/");
   };
@@ -76,7 +78,7 @@ const Header = () => {
     
     if (query) {
       navigate(`/search?q=${encodeURIComponent(query)}`);
-      setSearchQuery(""); // Clear after navigation
+      setSearchQuery(""); 
     }
   };
 
@@ -264,7 +266,7 @@ const Header = () => {
                     )}
                   </div>
                   <span className="hidden md:block text-sm font-medium text-gray-700">
-                    {user.fullName?.split(" ")[0]}
+                    {user?.fullName}
                   </span>
                 </div>
               </Dropdown>

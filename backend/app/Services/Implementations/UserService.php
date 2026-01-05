@@ -13,6 +13,7 @@ use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Services\CloudinaryService;
 use App\Services\OtpService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 
@@ -440,6 +441,71 @@ class UserService implements UserServiceInterface
             return [
                 'success' => false,
                 'message' => 'Could not refresh token: ' . $e->getMessage(),
+            ];
+        }
+    }
+    public function handleSocialLogin(string $provider, object $socialUser): array
+    {
+        try {
+            //Tìm user theo provider và provider_id
+            $user = $this->userRepository->findBySocialProvider($provider, $socialUser->id);
+            
+            if (!$user) {
+                $user = $this->userRepository->findByEmail($socialUser->email);
+                
+                if ($user) {
+                    // Nếu email đã tồn tại, liên kết với social provider
+                    $this->userRepository->update($user->id, [
+                        'provider' => $provider,
+                        'provider_id' => $socialUser->id,
+                        'avatar' => $socialUser->avatar ?? $user->avatar,
+                    ]);
+                    
+                    $user->refresh();
+                    
+                } else {
+                    $user = $this->userRepository->create([
+                        'full_name' => $socialUser->name,
+                        'email' => $socialUser->email,
+                        'avatar' => $socialUser->avatar,
+                        'provider' => $provider,
+                        'provider_id' => $socialUser->id,
+                        'is_verified' => true,
+                        'email_verified_at' => now(),
+                        'role' => UserRole::USER,
+                        'status' => UserStatus::ACTIVE,
+                        'password' => null,
+                    ]);
+                }
+            } else {
+                $this->userRepository->update($user->id, [
+                    'avatar' => $socialUser->avatar ?? $user->avatar,
+                    'full_name' => $socialUser->name ?? $user->full_name,
+                ]);
+                
+                $user->refresh();
+            }
+            
+            if ($user->status === UserStatus::INACTIVE) {
+                return [
+                    'success' => false,
+                    'message' => 'Tài khoản của bạn đã bị vô hiệu hóa',
+                ];
+            }
+            
+            $token = JWTAuth::fromUser($user);
+            
+            return [
+                'success' => true,
+                'message' => 'Đăng nhập thành công',
+                'user' => new UserResource($user),
+                'token' => $token,
+            ];
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage(),
             ];
         }
     }
