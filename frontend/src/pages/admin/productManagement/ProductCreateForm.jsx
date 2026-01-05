@@ -30,6 +30,8 @@ import {
 import { toast } from "react-toastify";
 import ProductService from "@/services/site/ProductService";
 import { useNavigate } from "react-router-dom";
+import CategoryService from "@/services/admin/CategoryService";
+import BrandService from "@/services/admin/BrandService";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -39,23 +41,9 @@ const ProductCreateForm = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-
-  const categories = [
-    { id: 1, name: "Áo Nam" },
-    { id: 2, name: "Quần Nam" },
-    { id: 3, name: "Phụ kiện" },
-  ];
-
-  const brands = [
-    { id: 1, name: "Nike" },
-    { id: 2, name: "Adidas" },
-    { id: 3, name: "Zara" },
-    { id: 4, name: "H&M" },
-    { id: 5, name: "Uniqlo" },
-    { id: 6, name: "Gucci" },
-    { id: 7, name: "Louis Vuitton" },
-    { id: 8, name: "Chanel" },
-  ];
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
 
   const dressStyles = [
     { value: "Casual", label: "Casual - Thường ngày" },
@@ -86,6 +74,32 @@ const ProductCreateForm = () => {
     is_active: true,
   });
   const [imagePreviews, setImagePreviews] = useState([]);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await CategoryService.getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error("Lỗi khi tải danh mục:", error);
+    }finally {
+      setLoading(false);
+    }
+  }
+
+  const fetchBrands = async () => {
+    try {
+      const data = await BrandService.getBrands();
+      setBrands(data);
+    } catch (error) {
+      console.error("Lỗi khi tải thương hiệu:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+    fetchBrands();
+  }, []);
 
   const updateField = (field, value) => {
     setProduct((prev) => ({ ...prev, [field]: value }));
@@ -683,6 +697,14 @@ const ProductCreateForm = () => {
       ),
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Text>Đang tải dữ liệu...</Text>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

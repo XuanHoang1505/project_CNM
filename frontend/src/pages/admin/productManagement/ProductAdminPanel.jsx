@@ -36,6 +36,8 @@ import {
 import { toast } from "react-toastify";
 import ProductService from "@/services/site/ProductService";
 import { useNavigate, useParams } from "react-router-dom";
+import CategoryService from "@/services/admin/CategoryService";
+import BrandService from "@/services/admin/BrandService";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
@@ -51,7 +53,6 @@ const ProductAdminPanel = () => {
 
   const navigate = useNavigate();
 
-  // Tách riêng ảnh cũ và ảnh mới
   const [existingImages, setExistingImages] = useState([]); 
   const [newImageFiles, setNewImageFiles] = useState([]); 
   const [newImagePreviews, setNewImagePreviews] = useState([]); 
@@ -81,26 +82,12 @@ const ProductAdminPanel = () => {
 
   const fetchMasterData = async () => {
     try {
-      // Fetch categories and brands
-      // const [categoriesRes, brandsRes] = await Promise.all([
-      //   ProductService.getAllCategories(),
-      //   ProductService.getAllBrands()
-      // ]);
-      // setCategories(categoriesRes.data);
-      // setBrands(brandsRes.data);
+      const categories = await CategoryService.getCategories();
+      setCategories(categories);
 
-      // Temporary hardcoded data
-      setCategories([
-        { id: 1, name: "Áo Nam" },
-        { id: 2, name: "Quần Nam" },
-        { id: 3, name: "Phụ kiện" },
-      ]);
-      setBrands([
-        { id: 1, name: "Nike" },
-        { id: 2, name: "Adidas" },
-        { id: 3, name: "Zara" },
-        { id: 4, name: "H&M" },
-      ]);
+      const brands = await BrandService.getBrands();
+      setBrands(brands);
+     
     } catch (error) {
       console.error("Error fetching master data:", error);
     }
