@@ -171,6 +171,10 @@ const UserManagement = () => {
       role: "USER",
       status: "ACTIVE",
     });
+    setSelectedAvatar(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""; 
+      }
     form.resetFields();
     handleResetStatus();
   };
@@ -188,6 +192,10 @@ const UserManagement = () => {
       role: item.role,
       status: item.status === "ACTIVE",
     });
+    setSelectedAvatar(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+       }
     updateStatus({ isEditing: true });
   };
 
@@ -204,25 +212,28 @@ const UserManagement = () => {
       setIsLoading(true);
 
       if (statusFunction.isEditing) {
+        const { avatar, ...restFormData } = formData;
+
         const updatedFormData = {
-          ...formData,
+          ...restFormData,
           gender:
-            formData.gender === ""
+            restFormData.gender === "" || restFormData.gender === null
               ? null
-              : formData.gender === "1"
+              : restFormData.gender === "1" || restFormData.gender === 1
               ? true
-              : false,
+              : restFormData.gender === "0" || restFormData.gender === 0  
+              ? false
+              : null,
         };
         const updatedUser = await UserService.updateUser(
           formData.id,
           updatedFormData,
           selectedAvatar
         );
-        console.log(updatedUser);
-        
+        console.log(updatedUser); 
         const formattedUser = {
           ...updatedUser,
-          gender: formData.gender === null ? "" : formData.gender ? "1" : "0",
+           gender: updatedUser.gender === null ? "" : updatedUser.gender ? "1" : "0",
         };
 
         const updatedUsers = userData.map((user) =>
@@ -246,11 +257,11 @@ const UserManagement = () => {
         const formattedUser = {
           ...newUser,
           gender:
-            formData.gender === null
+            newUser.gender === null
               ? ""
-              : formData.gender === true
+              : newUser.gender === true || newUser.gender === 1
               ? "1"
-              : "0",  
+              : "0",
         };
         setUserData([...userData, formattedUser]);
         message.success("Thêm mới thành công!");
@@ -374,7 +385,10 @@ const UserManagement = () => {
               <Form.Item label="Giới tính" name="gender">
                 <Select
                   placeholder="Chọn giới tính"
-                  onChange={(value) => handleInputChange("gender", value === "" ? null : value)}
+                  onChange={(value) => {
+                    const genderValue = value === "" ? "" : value;
+                    handleInputChange("gender", genderValue);
+                  }}
                   className="w-full"
                   value={formData.gender ?? ""}
                 >

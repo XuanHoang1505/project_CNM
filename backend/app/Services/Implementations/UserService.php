@@ -69,7 +69,7 @@ class UserService implements UserServiceInterface
         if (array_key_exists('gender', $data)) {
             $data['gender'] = is_null($data['gender']) ? null : (int)$data['gender'];
         }
-
+        
         if (isset($data['avatar']) && $data['avatar'] instanceof \Illuminate\Http\UploadedFile) {
             try {
                 // Xóa avatar cũ nếu có
