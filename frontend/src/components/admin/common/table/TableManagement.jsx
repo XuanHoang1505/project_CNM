@@ -234,7 +234,9 @@ const TableManagement = ({
       case "gender":
         return (
           <span className={`rounded-3 px-1 py-1 `}>
-            {item.gender === "1" ? (
+            {item.gender === "" || item.gender === null ? (
+              <span className="text-gray-400 italic">Chưa có</span>
+            ) : item.gender === "1" ? (
               <>
                 <ManOutlined /> Nam
               </>
@@ -245,7 +247,6 @@ const TableManagement = ({
             )}
           </span>
         );
-
       case "role":
         return (
           <span className="flex items-center">
