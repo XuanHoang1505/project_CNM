@@ -186,6 +186,9 @@ function WriteCommentOrder() {
         );
     }
 
+    console.log(product);
+
+
     return (
         <div className="max-w-7xl mx-auto px-4 py-8">
             {showSuccessToast && (
@@ -215,9 +218,9 @@ function WriteCommentOrder() {
             <div className="max-w-4xl mx-auto mb-8">
                 <div className="bg-gradient-to-br from-gray-50 to-white rounded-2xl p-6 border border-gray-200">
                     <div className="flex items-center gap-4">
-                        {product.data?.images?.[0] && (
+                        {product.data && (
                             <img
-                                src={product.data.images[0]}
+                                src={product.data.main_image}
                                 alt={product.data.name}
                                 className="w-20 h-20 object-cover rounded-xl border-2 border-gray-200"
                             />
