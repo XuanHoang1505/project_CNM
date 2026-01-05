@@ -4,6 +4,7 @@ namespace App\Services\Implementations;
 use App\Services\Interfaces\ProductServiceInterface;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 use App\Services\CloudinaryService;
+use App\Http\Resources\ProductResource;
 use Illuminate\Support\Facades\Log;
 
 class ProductService implements ProductServiceInterface
@@ -24,7 +25,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => true,
-                'data' => $products->items(),
+                'data' => ProductResource::collection($products->items())->resolve(),
                 'total' => $products->total(),
                 'current' => $products->currentPage(),
                 'pageSize' => $products->perPage(),
@@ -56,7 +57,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => true,
-                'data' => $products->items(),
+                'data' => ProductResource::collection($products->items())->resolve(),
                 'total' => $products->total(),
                 'current' => $products->currentPage(),
                 'pageSize' => $products->perPage(),
@@ -117,7 +118,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => true,
-                'data' => $products->items(),
+                'data' => ProductResource::collection($products->items())->resolve(),
                 'total' => $products->total(),
                 'current' => $products->currentPage(),
                 'pageSize' => $products->perPage(),
@@ -143,7 +144,7 @@ class ProductService implements ProductServiceInterface
 
             return [
                 'success' => true,
-                'data' => $products->items(),
+                'data' => ProductResource::collection($products->items())->resolve(),
                 'total' => $products->total(),
                 'current' => $products->currentPage(),
                 'pageSize' => $products->perPage(),

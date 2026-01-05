@@ -46,13 +46,13 @@ class ProductResource extends JsonResource
             'stock' => $this->stock ?? 0,
             'in_stock' => ($this->stock ?? 0) > 0,
             
-            // Images (Array)
-            'images' => $this->images ?? [],
+            // 🔥 FIX: Images - Format từ relationship
+            'images' => $this->formatImages(),
             'main_image' => $this->getMainImage(),
             'thumbnail' => $this->getThumbnail(),
             
-            // Variants (Array)
-            'variants' => $this->variants ?? [],
+            // 🔥 FIX: Variants - Format từ relationship
+            'variants' => $this->formatVariants(),
             'dressStyle' => $this->dressStyle ?? null,
             'available_sizes' => $this->getAvailableSizes(),
             'available_colors' => $this->getAvailableColors(),
@@ -104,62 +104,115 @@ class ProductResource extends JsonResource
         return (int) round((($this->compare_price - $this->price) / $this->compare_price) * 100);
     }
 
+    // 🔥 NEW: Format images từ relationship
+    private function formatImages(): array
+    {
+        // Nếu images là relationship Collection từ MySQL
+        if ($this->relationLoaded('images')) {
+            return $this->images->pluck('image_url')->toArray();
+        }
+
+        // Fallback: nếu images là JSON array
+        if (is_array($this->images)) {
+            return collect($this->images)->map(function ($image) {
+                if (is_string($image)) {
+                    return $image;
+                }
+                return $image['url'] ?? $image['image_url'] ?? null;
+            })->filter()->values()->toArray();
+        }
+
+        return [];
+    }
+
     private function getMainImage(): ?string
     {
-        if (empty($this->images)) {
-            return null;
-        }
-
-        // Find primary image
-        foreach ($this->images as $image) {
-            if (isset($image['is_primary']) && $image['is_primary']) {
-                return $image['url'] ?? null;
+        // 🔥 FIX: Lấy ảnh primary từ relationship
+        if ($this->relationLoaded('images')) {
+            $primaryImage = $this->images->where('is_primary', 1)->first();
+            if ($primaryImage) {
+                return $primaryImage->image_url;
             }
+            // Nếu không có primary, lấy ảnh đầu tiên
+            return $this->images->first()?->image_url;
         }
 
-        // Return first image if no primary
-        return $this->images[0]['url'] ?? null;
+        // Fallback: JSON format
+        $images = $this->formatImages();
+        return $images[0] ?? null;
     }
 
     private function getThumbnail(): ?string
     {
-        // Same as main image for now, can add thumbnail logic later
         return $this->getMainImage();
+    }
+
+    // 🔥 NEW: Format variants từ relationship
+    private function formatVariants(): array
+    {
+        // Nếu variants là relationship Collection từ MySQL
+        if ($this->relationLoaded('variants')) {
+            return $this->variants->map(function ($variant) {
+                return [
+                    'id' => (string) $variant->id,
+                    'size' => $variant->size,
+                    'color' => $variant->color,
+                    'color_code' => $variant->color_code ?? null,
+                    'stock' => $variant->stock ?? 0,
+                    'price' => $variant->price ?? $this->price,
+                ];
+            })->toArray();
+        }
+
+        // Fallback: JSON format
+        if (is_array($this->variants)) {
+            return collect($this->variants)->map(function ($variant) {
+                return [
+                    'id' => (string) ($variant['id'] ?? ''),
+                    'size' => $variant['size'] ?? '',
+                    'color' => $variant['color'] ?? '',
+                    'color_code' => $variant['color_code'] ?? null,
+                    'stock' => $variant['stock'] ?? 0,
+                    'price' => $variant['price'] ?? $this->price,
+                ];
+            })->toArray();
+        }
+
+        return [];
     }
 
     private function getAvailableSizes(): array
     {
-        if (empty($this->variants)) {
+        $variants = $this->formatVariants();
+        
+        if (empty($variants)) {
             return [];
         }
 
-        $sizes = [];
-        foreach ($this->variants as $variant) {
-            if (!in_array($variant['size'], $sizes)) {
-                $sizes[] = $variant['size'];
-            }
-        }
-
-        return $sizes;
+        return collect($variants)
+            ->pluck('size')
+            ->unique()
+            ->values()
+            ->toArray();
     }
 
     private function getAvailableColors(): array
     {
-        if (empty($this->variants)) {
+        $variants = $this->formatVariants();
+        
+        if (empty($variants)) {
             return [];
         }
 
-        $colors = [];
-        foreach ($this->variants as $variant) {
-            $colorKey = $variant['color'];
-            if (!isset($colors[$colorKey])) {
-                $colors[$colorKey] = [
+        return collect($variants)
+            ->map(function ($variant) {
+                return [
                     'name' => $variant['color'],
                     'code' => $variant['color_code'] ?? null,
                 ];
-            }
-        }
-
-        return array_values($colors);
+            })
+            ->unique('name')
+            ->values()
+            ->toArray();
     }
 }

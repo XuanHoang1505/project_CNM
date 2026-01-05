@@ -187,8 +187,11 @@ class OrderRepository implements OrderRepositoryInterface
         return Order::onlyTrashed()->latest()->get();
     }
 
-    public function getOrderByEmail(string $email){
-       return Order::where('customer_info->email', $email)
-                    ->orderBy('created_at', 'desc')->get();
-    } 
+    public function getOrderByEmail(string $email)
+    {
+        return Order::where('email', $email)
+            ->with(['items', 'payment']) // Eager load relationships
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
 }

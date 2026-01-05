@@ -47,7 +47,9 @@ class Product extends Model
 
     public function images()
     {
-        return $this->hasMany(ProductImage::class);
+        return $this->hasMany(ProductImage::class, 'product_id', 'id')
+            ->orderBy('is_primary', 'desc') // Ảnh primary lên đầu
+            ->orderBy('id', 'asc');
     }
 
     public function variants()
