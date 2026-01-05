@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import ProductService from "@/services/site/ProductService";
 import { formatNumber } from "@/utils/Formatter";
 import { COLOR_MAP } from "@/constants/colors";
+import { toast } from "react-toastify";
 
 
 function ProductDetail({ productSlug: propSlug }) {
@@ -202,11 +203,12 @@ function ProductDetail({ productSlug: propSlug }) {
         }
 
         localStorage.setItem('cart', JSON.stringify(existingCart));
+        window.dispatchEvent(new Event('cartUpdated'));
 
         // 🔥 DEBUG: Xem giỏ hàng sau khi thêm
         console.log('✅ Updated cart:', existingCart);
 
-        alert("✅ Added to cart!");
+        toast.success("Đã thêm sản phẩm vào giỏ hàng")
     };
 
 

@@ -3,6 +3,7 @@
 use App\Http\Controllers\AddressController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CategoryController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\AuthController;
@@ -142,3 +143,11 @@ Route::prefix('admin')->group(function () {
     Route::patch('categories/{category}/restore', [CategoryController::class, 'restore']);
     Route::get('categories/trashed', [CategoryController::class, 'trashed']);
 });
+Route::prefix('dashboard')
+    // ->middleware(['auth:api', 'admin'])
+    ->group(function () {
+        Route::get('', [DashboardController::class, 'index']);        // /api/dashboard
+        Route::get('/cards', [DashboardController::class, 'cards']);  // /api/dashboard/cards
+        Route::get('/charts', [DashboardController::class, 'charts']); // /api/dashboard/charts
+        Route::get('/tables', [DashboardController::class, 'tables']); // /api/dashboard/tables
+    });
