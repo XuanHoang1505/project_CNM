@@ -75,7 +75,7 @@ const AdminOrderManagement = () => {
   });
 
   const button = {
-    btnAdd: false, // Không cho thêm đơn từ admin
+    btnAdd: false, 
     btnEdit: true,
     btnDelete: true,
     btnDetail: true,
@@ -93,8 +93,8 @@ const AdminOrderManagement = () => {
 
   const orderColumns = [
     { key: "order_code", label: "Mã đơn hàng" },
-    { key: "customer_name", label: "Khách hàng" },
-    { key: "customer_phone", label: "Số điện thoại" },
+    { key: "full_name", label: "Khách hàng" },
+    { key: "phone", label: "Số điện thoại" },
     { key: "total", label: "Tổng tiền" },
     { key: "payment_method", label: "Thanh toán" },
     { key: "payment_status", label: "TT Thanh toán" },
@@ -107,7 +107,6 @@ const AdminOrderManagement = () => {
     (column) => !keysToRemove.includes(column.key)
   );
 
-  // Fetch statistics
   const fetchStatistics = async () => {
     try {
       const stats = await OrderService.getStatistics();
@@ -260,7 +259,6 @@ const AdminOrderManagement = () => {
     });
   };
 
-  // Render order status tag
   const renderOrderStatus = (status) => {
     const statusConfig = {
       pending: { color: "gold", text: "Chờ xử lý" },
@@ -273,7 +271,6 @@ const AdminOrderManagement = () => {
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
-  // Render payment status tag
   const renderPaymentStatus = (status) => {
     const statusConfig = {
       unpaid: { color: "default", text: "Chưa thanh toán" },
@@ -285,7 +282,6 @@ const AdminOrderManagement = () => {
     return <Tag color={config.color}>{config.text}</Tag>;
   };
 
-  // Format currency
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -296,9 +292,7 @@ const AdminOrderManagement = () => {
   const modalContent = (
     <>
       {statusFunction.isViewDetail ? (
-        // View Detail Mode
         <div className="space-y-4">
-          {/* Customer Info */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <UserOutlined className="text-blue-500 text-lg" />
@@ -321,7 +315,6 @@ const AdminOrderManagement = () => {
 
           <Divider />
 
-          {/* Shipping Address */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <EnvironmentOutlined className="text-green-500 text-lg" />
@@ -345,7 +338,6 @@ const AdminOrderManagement = () => {
 
           <Divider />
 
-          {/* Products */}
           <div>
             <div className="flex items-center gap-2 mb-3">
               <ShoppingOutlined className="text-purple-500 text-lg" />
@@ -408,7 +400,6 @@ const AdminOrderManagement = () => {
 
           <Divider />
 
-          {/* Order Info */}
           <Descriptions bordered column={2} size="small">
             <Descriptions.Item label="Mã đơn hàng" span={2}>
               <strong>{formData.order_code}</strong>
@@ -430,7 +421,6 @@ const AdminOrderManagement = () => {
           </Descriptions>
         </div>
       ) : (
-        // Edit Mode
         <Form
           form={form}
           layout="vertical"
@@ -454,10 +444,10 @@ const AdminOrderManagement = () => {
               <Select
                 onChange={(value) => handleInputChange("order_status", value)}
               >
-                <Option value="pending">🟡 Pending</Option>
-                <Option value="confirmed">🔵 Confirmed</Option>
-                <Option value="completed">🟢 Completed</Option>
-                <Option value="cancelled">🔴 Cancelled</Option>
+                <Option value="pending">Pending</Option>
+                <Option value="confirmed">Confirmed</Option>
+                <Option value="completed">Completed</Option>
+                <Option value="cancelled">Cancelled</Option>
               </Select>
             </Form.Item>
 
@@ -474,10 +464,10 @@ const AdminOrderManagement = () => {
               <Select
                 onChange={(value) => handleInputChange("payment_status", value)}
               >
-                <Option value="unpaid">⚪ Chưa thanh toán</Option>
-                <Option value="paid">🟢 Đã thanh toán</Option>
-                <Option value="refunded">🟠 Đã hoàn tiền</Option>
-                <Option value="failed">🔴 Thất bại</Option>
+                <Option value="unpaid">Chưa thanh toán</Option>
+                <Option value="paid">Đã thanh toán</Option>
+                <Option value="refunded">Đã hoàn tiền</Option>
+                <Option value="failed">Thất bại</Option>
               </Select>
             </Form.Item>
           </div>

@@ -25,6 +25,29 @@ import { Dropdown } from "antd";
 const Header = () => {
   const [isBannerVisible, setIsBannerVisible] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [cartItemCount, setCartItemCount] = useState(0);
+  
+  // Update cart count whenever localStorage changes
+  useEffect(() => {
+    const updateCartCount = () => {
+      const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+      const totalItems = cart.reduce((sum, item) => sum + (item.quantity || 1), 0);
+      setCartItemCount(totalItems);
+    };
+
+    updateCartCount();
+
+    // Listen for storage changes
+    window.addEventListener('storage', updateCartCount);
+    
+    // Custom event for cart updates in the same tab
+    window.addEventListener('cartUpdated', updateCartCount);
+
+    return () => {
+      window.removeEventListener('storage', updateCartCount);
+      window.removeEventListener('cartUpdated', updateCartCount);
+    };
+  }, []);
   
   const handleCloseBanner = () => {
     setIsBannerVisible(false);
@@ -64,7 +87,7 @@ const Header = () => {
   };
 
   const handleLogout = async () => {
-    logout(user.userId);
+    logout(user.id);
     updateUser(null);
     navigate("/");
   };
@@ -76,7 +99,7 @@ const Header = () => {
     
     if (query) {
       navigate(`/search?q=${encodeURIComponent(query)}`);
-      setSearchQuery(""); // Clear after navigation
+      setSearchQuery(""); 
     }
   };
 
@@ -91,6 +114,8 @@ const Header = () => {
   const handleClearSearch = () => {
     setSearchQuery("");
   };
+  console.log(">>>check user",user);
+  
 
   const menuItems = [
     {
@@ -127,7 +152,7 @@ const Header = () => {
           <span>Đơn hàng của tôi</span>
         </div>
       ),
-      onClick: () => navigate("/orders"),
+      onClick: () => navigate("/account/my-order"),
     },
     {
       key: "wishlist",
@@ -232,11 +257,19 @@ const Header = () => {
               )}
             </div>
 
-            <ShoppingCart
-              size={24}
-              className="cursor-pointer hover:text-gray-600 transition-colors"
-              onClick={() => navigate("/cart")}
-            />
+            {/* Shopping Cart with Badge */}
+            <div className="relative">
+              <ShoppingCart
+                size={24}
+                className="cursor-pointer hover:text-gray-900 transition-colors"
+                onClick={() => navigate("/cart")}
+              />
+              {cartItemCount > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {cartItemCount > 99 ? '99+' : cartItemCount}
+                </span>
+              )}
+            </div>
             
             {!user ? (
               <User
@@ -264,7 +297,7 @@ const Header = () => {
                     )}
                   </div>
                   <span className="hidden md:block text-sm font-medium text-gray-700">
-                    {user.fullName?.split(" ")[0]}
+                    {user?.fullName}
                   </span>
                 </div>
               </Dropdown>

@@ -19,20 +19,23 @@ function AccountInfo() {
   const [profile, setProfile] = useState({});
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [fileList, setFileList] = useState([]);
+  console.log(user);
+  
 
   useEffect(() => {
-    if (user?.userId) {
-      fetchUserProfile(user.userId);
+    if (user?.id) {
+      fetchUserProfile(user.id);
     }
-  }, [user?.userId]);
+  }, [user?.id]);
 
   const fetchUserProfile = async (userId) => {
     try {
       setLoading(true);
       const data = await UserService.getUserById(userId);
       setProfile(data);
+
+            
       
-      // Set form values
       form.setFieldsValue({
         fullName: data.fullName || "",
         phoneNumber: data.phoneNumber || "",

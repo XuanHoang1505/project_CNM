@@ -39,32 +39,55 @@ class OrderService implements OrderServiceInterface
     {
         DB::beginTransaction();
         try {
-            // Generate order code if not provided
             if (!isset($data['order_code'])) {
                 $data['order_code'] = $this->generateOrderCode();
             }
 
-            // Calculate total if not provided
-            if (!isset($data['total']) && isset($data['items'])) {
-                $orderTotal = $this->calculateOrderTotal(
-                    $data['items'],
-                    [
-                        'discount' => $data['discount'] ?? 0,
-                        'delivery_fee' => $data['delivery_fee'] ?? 0
-                    ]
-                );
-                $data['subtotal'] = $orderTotal['subtotal'];
-                $data['total'] = $orderTotal['total'];
+            if (!isset($data['subtotal']) && isset($data['items'])) {
+                $subtotal = 0;
+                foreach ($data['items'] as $item) {
+                    $subtotal += $item['price'] * $item['quantity'];
+                }
+                $data['subtotal'] = $subtotal;
             }
 
-            // Set default statuses
+            if (!isset($data['total'])) {
+                $discount = $data['discount'] ?? 0;
+                $deliveryFee = $data['delivery_fee'] ?? 0;
+                $data['total'] = $data['subtotal'] - $discount + $deliveryFee;
+            }
+
             $data['order_status'] = $data['order_status'] ?? 'pending';
             $data['payment_status'] = $data['payment_status'] ?? 'unpaid';
 
+            $items = $data['items'];
+            unset($data['items']);
+
+            // 5. Tạo Order
             $order = $this->orderRepository->create($data);
+
+            // 6. Tạo OrderItems
+            foreach ($items as $item) {
+                $orderItemData = [
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['product_name'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'size' => $item['size'] ?? null,
+                    'color' => $item['color'] ?? null,
+                    'image' => $item['image'] ?? null,
+                    'total' => $item['price'] * $item['quantity'],
+                ];
+
+                $order->items()->create($orderItemData);
+            }
+
+            $order->load('items', 'user');
 
             DB::commit();
             return $order;
+
         } catch (\Exception $e) {
             DB::rollBack();
             throw $e;
@@ -104,7 +127,6 @@ class OrderService implements OrderServiceInterface
     {
         $order = $this->getOrderById($id);
         
-        // Only allow deletion of pending or cancelled orders
         if (!in_array($order->order_status, ['pending', 'cancelled'])) {
             throw new \Exception('Only pending or cancelled orders can be deleted');
         }

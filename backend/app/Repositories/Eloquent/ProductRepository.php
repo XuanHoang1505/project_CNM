@@ -17,7 +17,7 @@ class ProductRepository implements ProductRepositoryInterface
 
     }
 
-    public function findById(string $id)
+    public function findById(int $id)
     {
         return Product::find($id);
     }
@@ -53,8 +53,6 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function findByParentCategory(string $parentName, int $perPage = 15)
     {
-        // Note: This assumes categories table has a 'parent' column
-        // If not, you may need to adjust this based on your category structure
         return Product::whereHas('category', function($q) use ($parentName) {
                 $q->where('parent', $parentName);
             })
@@ -221,10 +219,10 @@ class ProductRepository implements ProductRepositoryInterface
             ->get();
     }
 
-    public function getRelatedProducts(string $productId, string $categorySlug, int $limit = 6)
+    public function getRelatedProducts(int $productId, int $categoryId, int $limit = 6)
     {
-        return Product::whereHas('category', function($q) use ($categorySlug) {
-                $q->where('slug', $categorySlug);
+        return Product::whereHas('category', function($q) use ($categoryId) {
+                $q->where('id', $categoryId);
             })
             ->where('id', '!=', $productId)
             ->where('is_active', true)
@@ -237,7 +235,7 @@ class ProductRepository implements ProductRepositoryInterface
         return Product::create($data);
     }
 
-    public function update(string $id, array $data): Product|bool
+    public function update(int $id, array $data): Product|bool
     {
         $product = Product::find($id);
         
@@ -255,7 +253,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product;
     }
 
-    public function delete(string $id)
+    public function delete(int $id)
     {
         $product = Product::find($id);
         
@@ -266,7 +264,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->update(['is_active' => false]);
     }
 
-    public function forceDelete(string $id)
+    public function forceDelete(int $id)
     {
         $product = Product::find($id);
         
@@ -277,7 +275,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->delete();
     }
 
-    public function updateStock(string $id, int $quantity)
+    public function updateStock(int $id, int $quantity)
     {
         $product = Product::find($id);
         
@@ -288,7 +286,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->update(['stock' => $quantity]);
     }
 
-    public function decreaseStock(string $id, int $quantity)
+    public function decreaseStock(int $id, int $quantity)
     {
         $product = Product::find($id);
         
@@ -299,7 +297,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->decrement('stock', $quantity);
     }
 
-    public function increaseStock(string $id, int $quantity)
+    public function increaseStock(int $id, int $quantity)
     {
         $product = Product::find($id);
         
@@ -310,7 +308,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->increment('stock', $quantity);
     }
 
-    public function isInStock(string $id, int $quantity = 1)
+    public function isInStock(int $id, int $quantity = 1)
     {
         $product = Product::find($id);
         

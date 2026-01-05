@@ -6,29 +6,36 @@ use App\Http\Requests\BaseRequest;
 
 class UpdateUserRequest extends BaseRequest
 {
-    // UpdateUserRequest.php
-    public function prepareForValidation()
+    public function prepareForValidation()  
     {
-        // Chuyển đổi tên trường frontend thành tên trường trong database
         if ($this->has('fullName')) {
             $this->merge([
                 'full_name' => $this->get('fullName'),
             ]);
         }
-
         if ($this->has('phoneNumber')) {
+            $value = $this->get('phoneNumber');
             $this->merge([
-                'phone_number' => $this->get('phoneNumber'),
+                'phone_number' => ($value === '' || $value === 'null' || $value === null) ? null : $value,
             ]);
         }
-
         if ($this->has('gender')) {
-            $this->merge([
-                'gender' => is_null($this->gender) ? null : (int)$this->gender,
-            ]);
+            $value = $this->gender;
+            
+            if ($value === '' || $value === 'null' || $value === null) {
+                $gender = null;
+            } elseif ($value === '1' || $value === 1 || $value === true || $value === 'true') {
+                $gender = 1;
+            } elseif ($value === '0' || $value === 0 || $value === false || $value === 'false') {
+                $gender = 0;
+            } else {
+                $gender = null;
+            }
+            
+            $this->merge(['gender' => $gender]);
         }
     }
-
+    
     public function rules(): array
     {
         $userId = $this->route('user')?->id;
