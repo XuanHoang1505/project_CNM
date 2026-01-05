@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Slider, Drawer, Spin, Rate, Pagination, message } from "antd";
 import { SlidersHorizontal, ChevronRight, ShoppingCart } from "lucide-react";
 import ProductService from "@/services/site/ProductService";
+import CategoryService from "@/services/admin/CategoryService";
 
 function ShopPage() {
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -127,24 +128,24 @@ function ShopPage() {
   };
 
 
-  console.log(products);
-
   const fetchCategories = async () => {
     try {
-      const result = await ProductService.getCategories();
-      setCategories(result.data || []);
+      const result = await CategoryService.getCategories();
+      setCategories(result|| []);
     } catch (error) {
       console.error("Lỗi khi lấy danh mục:", error);
     }
   };
 
   const fetchDressStyles = async () => {
-    try {
-      const result = await ProductService.getDressStyles();
-      setDressStyles(result.data || []);
-    } catch (error) {
-      console.error("Lỗi khi lấy kiểu váy:", error);
-    }
+    setDressStyles([
+      { value: "Casual", label: "Casual - Thường ngày" },
+      { value: "Formal", label: "Formal - Trang trọng" },
+      { value: "Sport", label: "Sport - Thể thao" },
+      { value: "Business", label: "Business - Công sở" },
+      { value: "Street", label: "Street - Đường phố" },
+      { value: "Vintage", label: "Vintage - Cổ điển" },
+    ])
   };
 
   // Load products khi pagination hoặc appliedFilters thay đổi
@@ -356,13 +357,13 @@ function ShopPage() {
         {dressStyles.map((style, index) => (
           <div
             key={index}
-            onClick={() => toggleFilter("dressStyles", style.slug)}
+            onClick={() => toggleFilter("dressStyles", style.value)}
             className="flex justify-between items-center py-3 cursor-pointer hover:text-black transition-colors"
           >
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={tempFilters.dressStyles.includes(style.slug)}
+                checked={tempFilters.dressStyles.includes(style.value)}
                 onChange={() => { }}
                 className="w-4 h-4 cursor-pointer"
               />
@@ -373,7 +374,7 @@ function ShopPage() {
                     : "text-gray-600"
                 }
               >
-                {style.name}
+                {style.label}
               </span>
             </div>
             <ChevronRight className="w-4 h-4 text-gray-400" />

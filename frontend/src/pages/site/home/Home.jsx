@@ -101,7 +101,7 @@ function Home() {
       <div className="relative h-64 overflow-hidden bg-gray-100">
         <img
           src={
-            product.primary_image?.image_url ||
+            product.main_image ||
             "https://via.placeholder.com/300x400?text=No+Image"
           }
           alt={product.name}

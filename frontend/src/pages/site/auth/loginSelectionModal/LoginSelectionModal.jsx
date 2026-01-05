@@ -8,6 +8,7 @@ import iconFB from "@/assets/site/icons/facebook.png";
 import iconGG from "@/assets/site/icons/google.png";
 
 import { googleLogin, facebookLogin } from "../../../../services/site/ExternalAuthService";
+import { useNavigate } from "react-router-dom";
 
 const LoginSelectionModal = ({
   show,
@@ -16,6 +17,7 @@ const LoginSelectionModal = ({
   handleShowSignUpModal,
 }) => {
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
 
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -26,6 +28,9 @@ const LoginSelectionModal = ({
       
       toast.success("Đăng nhập thành công!");
       handleClose();
+
+      if(result.user.role == "ADMIN")
+        navigate('/admin');
       
       // Reload hoặc redirect sau khi đăng nhập thành công
       setTimeout(() => {

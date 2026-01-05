@@ -20,6 +20,19 @@ class ProductResource extends JsonResource
             return $default;
         };
 
+        // Get category data (handle both array and object)
+        $category = $this->category ?? null;
+        $categoryData = [
+            'name' => $category ? $getValue($category, 'name') : null,
+            'slug' => $category ? $getValue($category, 'slug') : null,
+        ];
+
+        // Get brand data (handle both array and object)
+        $brand = $this->brand ?? null;
+        $brandData = [
+            'name' => $brand ? $getValue($brand, 'name') : null,
+            'slug' => $brand ? $getValue($brand, 'slug') : null,
+        ];
 
         return [
             'id' => (string) ($this->_id ?? $this->id ?? ''),
@@ -28,6 +41,11 @@ class ProductResource extends JsonResource
             'description' => $this->description ?? '',
             "category_id" => $this->category_id ?? null,
             "brand_id" => $this->brand_id ?? null,
+            // Category (handle both MongoDB array and MySQL object)
+            'category' => $categoryData,
+            
+            // Brand (handle both MongoDB array and MySQL object)
+            'brand' => $brandData,
             
             // Pricing
             'price' => $this->price,
@@ -39,24 +57,40 @@ class ProductResource extends JsonResource
             'discount_percentage' => $this->getDiscountPercentage(),
             'on_sale' => $this->compare_price && $this->compare_price > $this->price,
             
-            // Inventory
-            'stock' => $this->stock ?? 0,
-            'in_stock' => ($this->stock ?? 0) > 0,
+ 
+            'stock' => $this->getTotalStock(),
+            'in_stock' => $this->getTotalStock() > 0,
             
             // Images (handle both collection and array)
             'images' => $this->getImagesArray(),
             'main_image' => $this->getMainImage(),
             'thumbnail' => $this->getThumbnail(),
             
+            // Variants (handle both collection and array)
             'variants' => $this->getVariantsArray(),
             'dressStyle' => $this->dress_style ?? $this->dressStyle ?? null,
+            'available_sizes' => $this->getAvailableSizes(),
+            'available_colors' => $this->getAvailableColors(),
             
+
             'material' => $this->material,
             'care_instructions' => $this->care_instructions,
-        
+            
+            // Status
             'is_featured' => (bool) ($this->is_featured ?? false),
             'is_active' => (bool) ($this->is_active ?? true),
             
+            // Statistics (handle both array and object)
+            'stats' => [
+                'rating_average' => $this->reviews()->avg('rating') ?? 0,
+                'rating_count' => $this->reviews()->count() ?? 0,
+                'review_count' => $this->reviews()->count() ?? 0,
+                'sold_count' => 0, 
+                'view_count' => 0, 
+                'wishlist_count' => 0, 
+            ],
+            
+            // Timestamps
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
@@ -161,4 +195,80 @@ class ProductResource extends JsonResource
         return $variants;
     }
 
+    // Helper to get stats value (handle both array and object)
+    private function getStatsValue(string $key, $default = 0)
+    {
+        $stats = $this->stats ?? null;
+        if (!$stats) {
+            return $default;
+        }
+
+        if (is_array($stats)) {
+            return $stats[$key] ?? $default;
+        }
+
+        if (is_object($stats)) {
+            return $stats->$key ?? $default;
+        }
+
+        return $default;
+    }
+
+    private function getTotalStock(): int
+    {
+        $variants = $this->getVariantsArray();
+        
+        if (empty($variants)) {
+            return 0;
+        }
+        
+        $totalStock = 0;
+        foreach ($variants as $variant) {
+            $stock = is_array($variant) ? ($variant['stock'] ?? 0) : ($variant->stock ?? 0);
+            $totalStock += (int) $stock;
+        }
+        
+        return $totalStock;
+    }
+
+    private function getAvailableSizes(): array
+    {
+        $variants = $this->getVariantsArray();
+        if (empty($variants)) {
+            return [];
+        }
+
+        $sizes = [];
+        foreach ($variants as $variant) {
+            $size = is_array($variant) ? ($variant['size'] ?? null) : ($variant->size ?? null);
+            if ($size && !in_array($size, $sizes)) {
+                $sizes[] = $size;
+            }
+        }
+
+        return $sizes;
+    }
+
+    private function getAvailableColors(): array
+    {
+        $variants = $this->getVariantsArray();
+        if (empty($variants)) {
+            return [];
+        }
+
+        $colors = [];
+        foreach ($variants as $variant) {
+            $color = is_array($variant) ? ($variant['color'] ?? null) : ($variant->color ?? null);
+            $colorCode = is_array($variant) ? ($variant['color_code'] ?? null) : ($variant->color_code ?? null);
+            
+            if ($color && !isset($colors[$color])) {
+                $colors[$color] = [
+                    'name' => $color,
+                    'code' => $colorCode,
+                ];
+            }
+        }
+
+        return array_values($colors);
+    }
 }

@@ -11,6 +11,8 @@ export const googleLogin = async (credential) => {
       access_token: credential,
     });
 
+    console.log(">>> check res", response);
+    
     let token = response.data.access_token;
 
     if (token && token.startsWith("Bearer ")) {
