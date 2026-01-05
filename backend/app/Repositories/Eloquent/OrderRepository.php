@@ -192,7 +192,12 @@ class OrderRepository implements OrderRepositoryInterface
     public function getOrderByEmail(string $email)
     {
         return Order::where('email', $email)
+
+            ->with(['items', 'payment']) // Eager load relationships
             ->orderBy('created_at', 'desc')
             ->get();
     }
 }
+
+
+

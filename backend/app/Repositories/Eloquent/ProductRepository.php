@@ -24,7 +24,9 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function findBySlug(string $slug)
     {
-        $product = Product::where('slug', $slug)->firstOrFail();
+        $product = Product::with(['images', 'variants'])
+            ->where('slug', $slug)
+            ->firstOrFail();
 
         return new ProductResource($product);
     }
