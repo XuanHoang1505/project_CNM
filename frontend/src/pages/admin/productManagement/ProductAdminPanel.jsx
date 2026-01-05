@@ -276,7 +276,7 @@ const ProductAdminPanel = () => {
       // Gửi request
       const response = await ProductService.updateProduct(product.id, formData);
 
-      toast.success("Lưu sản phẩm thành công!");
+      message.success("Lưu sản phẩm thành công!");
       setIsDirty(false);
 
       // Cleanup
