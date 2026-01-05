@@ -13,7 +13,9 @@ import {
   AppstoreOutlined,
   SkinOutlined,
   EuroOutlined,
-  ShoppingCartOutlined
+  ShoppingCartOutlined,
+  UnorderedListOutlined ,
+  GitlabOutlined
 } from '@ant-design/icons';
 
 export const menuConfig = {
@@ -41,6 +43,18 @@ export const menuConfig = {
     //     { label: 'Pay', path: '/ecommerce/pay' }
     //   ]
     // },  
+    {
+      id: 'category',
+      label: 'Categories',
+      path: '/admin/categories',
+      icon: UnorderedListOutlined 
+    },
+    {
+      id: 'brand',
+      label: 'Brands',
+      path: '/admin/brands',
+      icon: GitlabOutlined 
+    },
     {
       id: 'user',
       label: 'Users',

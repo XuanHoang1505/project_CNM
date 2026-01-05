@@ -30,8 +30,11 @@ class CategoryController extends Controller
 
     public function update(UpdateCategoryRequest $request, int $id)
     {
-        $this->categoryService->update($id, $request->validated());
-        return response()->json(['message' => 'Updated successfully']);
+        $result = $this->categoryService->update($id, $request->validated());
+        return response()->json([
+            'message' => 'Updated successfully',
+            'data' => $result
+        ]);
     }
 
     public function destroy(int $id)

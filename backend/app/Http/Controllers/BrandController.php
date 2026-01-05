@@ -38,8 +38,11 @@ class BrandController extends Controller
 
     public function update(UpdateBrandRequest $request, int $id)
     {
-        $this->brandService->update($id, $request->validated());
-        return response()->json(['message' => 'Updated successfully']);
+        $result = $this->brandService->update($id, $request->validated());
+        return response()->json([
+            'message' => 'Updated successfully',
+            'data' => $result
+        ]);
     }
 
     public function destroy(int $id)

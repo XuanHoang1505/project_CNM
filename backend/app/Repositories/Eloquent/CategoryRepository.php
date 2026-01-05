@@ -28,10 +28,14 @@ class CategoryRepository implements CategoryRepositoryInterface
         return Category::create($data);
     }
 
-    public function update(int $id, array $data): bool
+    public function update(int $id, array $data): Category
     {
-        return Category::where('id', $id)->update($data);
+        $category = Category::findOrFail($id);
+        $category->update($data);
+
+        return $category;
     }
+
 
     public function delete(int $id): bool
     {

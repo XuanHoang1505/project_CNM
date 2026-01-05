@@ -41,6 +41,8 @@ import AdminOrderManagement from "./pages/admin/orderManagement/AdminOrderManage
 import WriteCommentOrder from "./components/site/writeComment_true/WriteCommentOrder";
 import Dashboard from "./pages/admin/dashboard/Dashboard";
 import SearchPage from "./pages/site/search/SearchPage";
+import CategoryManagement from "./pages/admin/categoryManagement.jsx/CategoryManagement";
+import BrandManagement from "./pages/admin/brandManagement/BrandManagement";
 
 function App() {
   const { user } = useContext(UserContext);
@@ -66,6 +68,8 @@ function App() {
               }
             >
               <Route index element={<Dashboard />} />
+              <Route path="categories" element={<CategoryManagement />} />
+              <Route path="brands" element={<BrandManagement />} />
               <Route path="users" element={<UserManagement />} />
               <Route path="products" element={<ProductManagement />} />
               <Route path="product/:slug" element={<ProductAdminPanel />} />
