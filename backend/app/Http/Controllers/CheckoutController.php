@@ -4,27 +4,36 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Order\CreateOrderRequest;
 use App\Models\Order;
+use App\Models\OrderItem;
+use App\Models\Payment;
 use App\Notifications\SendMailOrderNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Notification;
 
-    class CheckoutController extends Controller
-    {
-        public function createOrderCOD(CreateOrderRequest $request)
+class CheckoutController extends Controller
+{
+    public function createOrderCOD(CreateOrderRequest $request)
     {
         $data = $request->validated();
 
+        DB::beginTransaction();
         try {
             $order_code = 'ORD' . time() . rand(1000, 9999);
 
+            $userId = $data['user_id'] ?? Auth::id();
+            // Tạo đơn hàng
             $order = Order::create([
                 'order_code' => $order_code,
-                'user_id' => Auth::id(),
-                'customer_info' => $data['customer_info'],
-                'shipping_address' => $data['shipping_address'],
-                'items' => $data['items'],
+                'user_id' => $userId,
+                'full_name' => $data['customer_info']['fullName'],
+                'email' => $data['customer_info']['email'],
+                'phone' => $data['customer_info']['phone'],
+                'house_number' => $data['shipping_address']['houseNumber'],
+                'province' => $data['shipping_address']['province'],
+                'ward' => $data['shipping_address']['ward'],
+                'note' => $data['note'] ?? '',
                 'payment_method' => 'cod',
                 'payment_status' => 'pending',
                 'order_status' => 'pending',
@@ -32,10 +41,26 @@ use Illuminate\Support\Facades\Notification;
                 'discount' => $data['discount'] ?? 0,
                 'delivery_fee' => $data['delivery_fee'],
                 'total' => $data['total_vnpay'],
-                'note' => $data['note'] ?? '',
             ]);
 
-            // Gửi email luôn
+            // Tạo các order items
+            foreach ($data['items'] as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['name'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'size' => $item['size'] ?? null,
+                    'color' => $item['color'] ?? null,
+                    'image' => $item['image'] ?? null,
+                    'total' => $item['quantity'] * $item['price'],
+                ]);
+            }
+
+            DB::commit();
+
+            // Gửi email
             $order->notify(new SendMailOrderNotification($order));
 
             return response()->json([
@@ -45,6 +70,9 @@ use Illuminate\Support\Facades\Notification;
             ]);
 
         } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Create COD order failed: ' . $e->getMessage());
+            
             return response()->json([
                 'code' => '01',
                 'message' => 'Failed to create order',
@@ -56,42 +84,27 @@ use Illuminate\Support\Facades\Notification;
     /**
      * Tạo đơn hàng và khởi tạo thanh toán VNPAY
      */
-
     public function vnpay_payment(CreateOrderRequest $request)
     {
         $data = $request->validated();
         
-        // Tạo mã đơn hàng unique
         $order_code = 'ORD' . time() . rand(1000, 9999);
         
-        // Tạo đơn hàng trong database
+        DB::beginTransaction();
         try {
+
+            $userId = $data['user_id'] ?? Auth::id();
+            // Tạo đơn hàng
             $order = Order::create([
                 'order_code' => $order_code,
-                'user_id' => Auth::id(),
-                'customer_info' => [
-                    'fullName' => $data['customer_info']['fullName'],
-                    'email' => $data['customer_info']['email'],
-                    'phone' => $data['customer_info']['phone'],
-                ],
-                'shipping_address' => [
-                    'houseNumber' => $data['shipping_address']['houseNumber'],
-                    'province' => $data['shipping_address']['province'],
-                    'ward' => $data['shipping_address']['ward'],
-                    'note' => $data['shipping_address']['note'] ?? '',
-                ],
-                'items' => array_map(function($item) {
-                    return [
-                        'product_id' => $item['product_id'],
-                        'name' => $item['name'],
-                        'quantity' => $item['quantity'],
-                        'price' => $item['price'],
-                        'size' => $item['size'] ?? null,
-                        'color' => $item['color'] ?? null,
-                        'image' => $item['image'] ?? null,
-                        'total' => $item['quantity'] * $item['price']
-                    ];
-                }, $data['items']),
+                'user_id' => $userId,
+                'full_name' => $data['customer_info']['fullName'],
+                'email' => $data['customer_info']['email'],
+                'phone' => $data['customer_info']['phone'],
+                'house_number' => $data['shipping_address']['houseNumber'],
+                'province' => $data['shipping_address']['province'],
+                'ward' => $data['shipping_address']['ward'],
+                'note' => $data['note'] ?? '',
                 'payment_method' => 'vnpay',
                 'payment_status' => 'pending',
                 'order_status' => 'pending',
@@ -99,15 +112,29 @@ use Illuminate\Support\Facades\Notification;
                 'discount' => $data['discount'] ?? 0,
                 'delivery_fee' => $data['delivery_fee'],
                 'total' => $data['total_vnpay'],
-                'note' => $data['note'] ?? '',
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
-            // ❌ XÓA DÒNG NÀY - Không gửi email khi tạo đơn
-            // Chỉ gửi email khi thanh toán thành công
+            // Tạo các order items
+            foreach ($data['items'] as $item) {
+                OrderItem::create([
+                    'order_id' => $order->id,
+                    'product_id' => $item['product_id'],
+                    'product_name' => $item['name'],
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
+                    'size' => $item['size'] ?? null,
+                    'color' => $item['color'] ?? null,
+                    'image' => $item['image'] ?? null,
+                    'total' => $item['quantity'] * $item['price'],
+                ]);
+            }
+
+            DB::commit();
 
         } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Create VNPAY order failed: ' . $e->getMessage());
+            
             return response()->json([
                 'code' => '02',
                 'message' => 'Failed to create order',
@@ -167,7 +194,7 @@ use Illuminate\Support\Facades\Notification;
         return response()->json([
             'code' => '00',
             'message' => 'success',
-            'order_id' => $order->_id,
+            'order_id' => $order->id,
             'order_code' => $order_code,
             'payment_url' => $vnp_Url
         ]);
@@ -213,46 +240,56 @@ use Illuminate\Support\Facades\Notification;
 
         if ($secureHash == $vnp_SecureHash) {
             if ($response_code == '00') {
+                // Chỉ xử lý nếu đơn chưa paid
+                if ($order->payment_status !== 'paid') {
+                    DB::beginTransaction();
+                    try {
+                        // Cập nhật đơn hàng
+                        $order->update([
+                            'payment_status' => 'paid',
+                            'order_status' => 'confirmed',
+                        ]);
 
-            // Chỉ xử lý nếu đơn chưa paid
-            if ($order->payment_status !== 'paid') {
+                        // Lưu thông tin thanh toán
+                        Payment::create([
+                            'order_id' => $order->id,
+                            'transaction_no' => $request->vnp_TransactionNo,
+                            'bank_code' => $request->vnp_BankCode,
+                            'card_type' => $request->vnp_CardType,
+                            'pay_date' => \Carbon\Carbon::createFromFormat('YmdHis', $request->vnp_PayDate),
+                            'response_code' => $response_code,
+                        ]);
 
-                // Cập nhật đơn hàng
-                $order->update([
-                    'payment_status' => 'paid',
-                    'order_status' => 'confirmed',
-                    'vnpay_transaction' => [
-                        'transaction_no' => $request->vnp_TransactionNo,
-                        'bank_code' => $request->vnp_BankCode,
-                        'card_type' => $request->vnp_CardType,
-                        'pay_date' => $request->vnp_PayDate,
-                        'response_code' => $response_code,
-                    ],
-                    'updated_at' => now(),
-                ]);
+                        DB::commit();
 
-                // Gửi email 1 lần duy nhất
-                try {
-                    $order->notify(new SendMailOrderNotification($order));
-                } catch (\Exception $e) {
-                    Log::error('Failed to send order confirmation email: ' . $e->getMessage());
+                        // Gửi email
+                        try {
+                            $order->notify(new SendMailOrderNotification($order));
+                        } catch (\Exception $e) {
+                            Log::error('Failed to send order confirmation email: ' . $e->getMessage());
+                        }
+                    } catch (\Exception $e) {
+                        DB::rollBack();
+                        Log::error('Failed to update order payment: ' . $e->getMessage());
+                    }
                 }
-            }
 
-            return response()->json([
-                'code' => '00',
-                'message' => 'Payment success',
-                'order' => $order
-            ]);
+                return response()->json([
+                    'code' => '00',
+                    'message' => 'Payment success',
+                    'order' => $order->load(['items', 'payment'])
+                ]);
             } else {
-                // Thanh toán thất bại - Không gửi email
+                // Thanh toán thất bại
                 $order->update([
                     'payment_status' => 'failed',
                     'order_status' => 'cancelled',
-                    'vnpay_transaction' => [
-                        'response_code' => $response_code,
-                    ],
-                    'updated_at' => now(),
+                ]);
+
+                // Lưu thông tin lỗi thanh toán
+                Payment::create([
+                    'order_id' => $order->id,
+                    'response_code' => $response_code,
                 ]);
 
                 Log::warning('Payment failed for order: ' . $order_code . ' - Response code: ' . $response_code);
@@ -278,7 +315,9 @@ use Illuminate\Support\Facades\Notification;
      */
     public function getOrder($order_code)
     {
-        $order = Order::where('order_code', $order_code)->first();
+        $order = Order::with(['items', 'payment'])
+            ->where('order_code', $order_code)
+            ->first();
         
         if (!$order) {
             return response()->json([

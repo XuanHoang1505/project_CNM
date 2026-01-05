@@ -132,6 +132,46 @@ const TableManagement = ({
         );
       }
 
+      case "order_status":
+        return (
+          <span
+            className={
+              item.order_status === "completed"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800"
+                : item.order_status === "canceled"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800"
+                : item.order_status === "confirmed"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800"
+                : item.order_status === "pending" 
+                ? "px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-800"
+                : "px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800"
+            } 
+          >
+            {item.order_status === "completed"
+              ? "Hoàn thành"
+              : item.order_status === "confirmed"
+              ? "Đã xác nhận"
+              : item.order_status === "canceled"
+              ? "Đã hủy"
+              : item.order_status === "pending"
+              ? "Đang xử lý"
+              : "Chưa xử lý"}
+          </span>
+        );
+
+      case "payment_status":
+        return (
+          <span
+            className={
+              item.payment_status === "paid"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800"
+                : "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800"
+            }
+          >
+            {item.payment_status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+          </span>
+        );  
+
       case "avatar":
         return (
           <img

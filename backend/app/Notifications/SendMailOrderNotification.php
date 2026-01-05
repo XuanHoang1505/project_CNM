@@ -24,8 +24,16 @@ class SendMailOrderNotification extends Notification
 
     public function toMail($notifiable)
     {
-        $customerName = $this->order->customer_info['fullName'] ?? 'Khách hàng';
-        $orderItems = $this->order->items ?? [];
+        // 🔥 Lấy tên khách hàng từ column full_name (MySQL)
+        $customerName = $this->order->full_name ?? 'Khách hàng';
+        
+        // 🔥 Đảm bảo load relationship items nếu chưa có
+        if (!$this->order->relationLoaded('items')) {
+            $this->order->load('items');
+        }
+        
+        // 🔥 Lấy items từ relationship
+        $orderItems = $this->order->items;
         
         return (new MailMessage)
             ->subject('✓ Xác nhận đơn hàng #' . $this->order->order_code . ' - SHOP.CO')

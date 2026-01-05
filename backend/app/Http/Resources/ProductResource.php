@@ -9,26 +9,25 @@ class ProductResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        // Helper to get value from array or object (MongoDB vs MySQL compatibility)
+        $getValue = function($data, $key, $default = null) {
+            if (is_array($data)) {
+                return $data[$key] ?? $default;
+            }
+            if (is_object($data)) {
+                return $data->$key ?? $default;
+            }
+            return $default;
+        };
+
+
         return [
-            'id' => (string) $this->_id ?? $this->id,
-            'name' => $this->name,
-            'slug' => $this->slug,
-            'description' => $this->description,
-            
-            // Category (Embedded)
-            'category' => [
-                'name' => $this->category['name'] ?? null,
-                'slug' => $this->category['slug'] ?? null,
-                'parent' => $this->category['parent'] ?? null,
-            ],
-            
-            // Brand (Embedded)
-            'brand' => [
-                'name' => $this->brand['name'] ?? null,
-                'slug' => $this->brand['slug'] ?? null,
-                'country' => $this->brand['country'] ?? null,
-                'logo' => $this->brand['logo'] ?? null,
-            ],
+            'id' => (string) ($this->_id ?? $this->id ?? ''),
+            'name' => $this->name ?? '',
+            'slug' => $this->slug ?? '',
+            'description' => $this->description ?? '',
+            "category_id" => $this->category_id ?? null,
+            "brand_id" => $this->brand_id ?? null,
             
             // Pricing
             'price' => $this->price,
@@ -41,55 +40,23 @@ class ProductResource extends JsonResource
             'on_sale' => $this->compare_price && $this->compare_price > $this->price,
             
             // Inventory
-            'sku' => $this->sku,
-            'barcode' => $this->barcode,
             'stock' => $this->stock ?? 0,
             'in_stock' => ($this->stock ?? 0) > 0,
             
-            // Images (Array)
-            'images' => $this->images ?? [],
+            // Images (handle both collection and array)
+            'images' => $this->getImagesArray(),
             'main_image' => $this->getMainImage(),
             'thumbnail' => $this->getThumbnail(),
             
-            // Variants (Array)
-            'variants' => $this->variants ?? [],
-            'dressStyle' => $this->dressStyle ?? null,
-            'available_sizes' => $this->getAvailableSizes(),
-            'available_colors' => $this->getAvailableColors(),
+            'variants' => $this->getVariantsArray(),
+            'dressStyle' => $this->dress_style ?? $this->dressStyle ?? null,
             
-            // Product details
-            'tags' => $this->tags ?? [],
             'material' => $this->material,
             'care_instructions' => $this->care_instructions,
-            
-            // Dimensions
-            'weight' => $this->weight,
-            'dimensions' => $this->dimensions ?? null,
-            
-            // SEO (Hidden by default, show when requested)
-            $this->mergeWhen($request->input('include_seo'), [
-                'meta_title' => $this->meta_title,
-                'meta_description' => $this->meta_description,
-                'meta_keywords' => $this->meta_keywords ?? [],
-            ]),
-            
-            // Status
+        
             'is_featured' => (bool) ($this->is_featured ?? false),
             'is_active' => (bool) ($this->is_active ?? true),
-            'is_new' => (bool) ($this->is_new ?? false),
-            'is_bestseller' => (bool) ($this->is_bestseller ?? false),
             
-            // Statistics (Embedded)
-            'stats' => [
-                'rating_average' => $this->stats['rating_average'] ?? 0,
-                'rating_count' => $this->stats['rating_count'] ?? 0,
-                'review_count' => $this->stats['review_count'] ?? 0,
-                'sold_count' => $this->stats['sold_count'] ?? 0,
-                'view_count' => $this->stats['view_count'] ?? 0,
-                'wishlist_count' => $this->stats['wishlist_count'] ?? 0,
-            ],
-            
-            // Timestamps
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
             'updated_at' => $this->updated_at?->format('Y-m-d H:i:s'),
         ];
@@ -106,19 +73,28 @@ class ProductResource extends JsonResource
 
     private function getMainImage(): ?string
     {
-        if (empty($this->images)) {
+        $images = $this->getImagesArray();
+        if (empty($images)) {
             return null;
         }
 
         // Find primary image
-        foreach ($this->images as $image) {
-            if (isset($image['is_primary']) && $image['is_primary']) {
-                return $image['url'] ?? null;
+        foreach ($images as $image) {
+            $isPrimary = is_array($image) ? ($image['is_primary'] ?? 0) : ($image->is_primary ?? 0);
+            if ($isPrimary == 1) {
+                return is_array($image) ? ($image['url'] ?? $image['image_url'] ?? null) : ($image->url ?? $image->image_url ?? null);
             }
         }
 
         // Return first image if no primary
-        return $this->images[0]['url'] ?? null;
+        $firstImage = $images[0] ?? null;
+        if (!$firstImage) {
+            return null;
+        }
+        
+        return is_array($firstImage) 
+            ? ($firstImage['url'] ?? $firstImage['image_url'] ?? null)
+            : ($firstImage->url ?? $firstImage->image_url ?? null);
     }
 
     private function getThumbnail(): ?string
@@ -127,39 +103,62 @@ class ProductResource extends JsonResource
         return $this->getMainImage();
     }
 
-    private function getAvailableSizes(): array
+    // Helper to get images as array (handle both collection and array)
+    private function getImagesArray(): array
     {
-        if (empty($this->variants)) {
+        $images = $this->images ?? [];
+        
+        // Convert Eloquent collection to array
+        if (is_object($images) && method_exists($images, 'toArray')) {
+            $images = $images->toArray();
+        }
+        
+        if (!is_array($images)) {
             return [];
         }
 
-        $sizes = [];
-        foreach ($this->variants as $variant) {
-            if (!in_array($variant['size'], $sizes)) {
-                $sizes[] = $variant['size'];
-            }
-        }
-
-        return $sizes;
-    }
-
-    private function getAvailableColors(): array
-    {
-        if (empty($this->variants)) {
-            return [];
-        }
-
-        $colors = [];
-        foreach ($this->variants as $variant) {
-            $colorKey = $variant['color'];
-            if (!isset($colors[$colorKey])) {
-                $colors[$colorKey] = [
-                    'name' => $variant['color'],
-                    'code' => $variant['color_code'] ?? null,
+        // Convert to consistent format
+        return array_map(function($img) {
+            // Handle Eloquent model object
+            if (is_object($img) && !is_array($img)) {
+                return [
+                    'id' => $img->id ?? null,
+                    'product_id' => $img->product_id ?? null,
+                    'image_url' => $img->image_url ?? $img->url ?? null,
+                    'url' => $img->url ?? $img->image_url ?? null,
+                    'is_primary' => $img->is_primary ?? 0,
                 ];
             }
+            
+            // Handle array
+            if (is_array($img)) {
+                return [
+                    'id' => $img['id'] ?? null,
+                    'product_id' => $img['product_id'] ?? null,
+                    'image_url' => $img['image_url'] ?? $img['url'] ?? null,
+                    'url' => $img['url'] ?? $img['image_url'] ?? null,
+                    'is_primary' => $img['is_primary'] ?? 0,
+                ];
+            }
+            
+            return $img;
+        }, $images);
+    }
+
+    // Helper to get variants as array (handle both collection and array)
+    private function getVariantsArray(): array
+    {
+        $variants = $this->variants ?? [];
+        
+        if (is_object($variants) && method_exists($variants, 'toArray')) {
+            $variants = $variants->toArray();
+        }
+        
+        if (!is_array($variants)) {
+            return [];
         }
 
-        return array_values($colors);
+        return $variants;
     }
+
 }
