@@ -34,6 +34,9 @@ class ProductResource extends JsonResource
             'slug' => $brand ? $getValue($brand, 'slug') : null,
         ];
 
+        // Calculate review stats
+        $reviewStats = $this->getReviewStats();
+
         return [
             'id' => (string) ($this->_id ?? $this->id ?? ''),
             'name' => $this->name ?? '',
@@ -80,14 +83,14 @@ class ProductResource extends JsonResource
             'is_featured' => (bool) ($this->is_featured ?? false),
             'is_active' => (bool) ($this->is_active ?? true),
             
-            // Statistics (handle both array and object)
+            // Statistics
             'stats' => [
-                'rating_average' => $this->reviews()->avg('rating') ?? 0,
-                'rating_count' => $this->reviews()->count() ?? 0,
-                'review_count' => $this->reviews()->count() ?? 0,
-                'sold_count' => 0, 
-                'view_count' => 0, 
-                'wishlist_count' => 0, 
+                'rating_average' => $reviewStats['rating_average'],
+                'rating_count' => $reviewStats['rating_count'],
+                'review_count' => $reviewStats['review_count'],
+                'sold_count' => (int) ($this->sold_count ?? 0), 
+                'view_count' => (int) ($this->view_count ?? 0), 
+                'wishlist_count' => (int) ($this->wishlist_count ?? 0), 
             ],
             
             // Timestamps
@@ -103,6 +106,52 @@ class ProductResource extends JsonResource
             return 0;
         }
         return (int) round((($this->compare_price - $this->price) / $this->compare_price) * 100);
+    }
+
+    private function getReviewStats(): array
+    {
+        try {
+            // Check if reviews relationship exists
+            if (method_exists($this->resource, 'reviews')) {
+                $avgRating = $this->reviews()->avg('rating');
+                $reviewCount = $this->reviews()->count();
+                
+                return [
+                    'rating_average' => $avgRating ? round((float) $avgRating, 2) : 0,
+                    'rating_count' => (int) $reviewCount,
+                    'review_count' => (int) $reviewCount,
+                ];
+            }
+            
+            // Fallback: Try to get from loaded relationship
+            if (isset($this->reviews) && $this->reviews !== null) {
+                $reviews = is_array($this->reviews) ? $this->reviews : $this->reviews->toArray();
+                $count = count($reviews);
+                
+                if ($count > 0) {
+                    $sum = 0;
+                    foreach ($reviews as $review) {
+                        $rating = is_array($review) ? ($review['rating'] ?? 0) : ($review->rating ?? 0);
+                        $sum += (float) $rating;
+                    }
+                    $average = $sum / $count;
+                    
+                    return [
+                        'rating_average' => round($average, 2),
+                        'rating_count' => $count,
+                        'review_count' => $count,
+                    ];
+                }
+            }
+        } catch (\Exception $e) {
+            // If anything fails, return default values
+        }
+
+        return [
+            'rating_average' => 0,
+            'rating_count' => 0,
+            'review_count' => 0,
+        ];
     }
 
     private function getMainImage(): ?string
@@ -195,25 +244,6 @@ class ProductResource extends JsonResource
         return $variants;
     }
 
-    // Helper to get stats value (handle both array and object)
-    private function getStatsValue(string $key, $default = 0)
-    {
-        $stats = $this->stats ?? null;
-        if (!$stats) {
-            return $default;
-        }
-
-        if (is_array($stats)) {
-            return $stats[$key] ?? $default;
-        }
-
-        if (is_object($stats)) {
-            return $stats->$key ?? $default;
-        }
-
-        return $default;
-    }
-
     private function getTotalStock(): int
     {
         $variants = $this->getVariantsArray();
@@ -265,6 +295,7 @@ class ProductResource extends JsonResource
                 $colors[$color] = [
                     'name' => $color,
                     'code' => $colorCode,
+                    'hex' => $colorCode, // Add 'hex' as alias for frontend compatibility
                 ];
             }
         }

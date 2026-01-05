@@ -221,6 +221,8 @@ function ProductDetail({ productSlug: propSlug }) {
         );
     }
 
+    console.log(product);
+
     const images = product.images || [];
     const currentStock = selectedVariant?.stock || product.stock || 0;
     const displayImages = images.length > 0 ? images : ['https://placehold.co/600x600?text=No+Image'];
@@ -314,6 +316,7 @@ function ProductDetail({ productSlug: propSlug }) {
                                     </svg>
                                 ))}
                                 <span className="ml-1 text-sm font-medium text-gray-900">
+
                                     {product.stats?.rating_average?.toFixed(1) || '4.5'}/5
                                 </span>
                             </div>
