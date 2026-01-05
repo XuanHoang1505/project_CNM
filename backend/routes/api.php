@@ -24,6 +24,8 @@ Route::prefix('auth')->group(function () {
     Route::post('resend-otp', [AuthController::class, 'resendOtp']);
 
     Route::post('change-password', [AuthController::class, 'changePassword']);
+
+    Route::post('social-login', [AuthController::class, 'socialLogin']);
 });
 
 
