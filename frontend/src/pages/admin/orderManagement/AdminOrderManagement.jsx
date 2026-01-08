@@ -75,7 +75,7 @@ const AdminOrderManagement = () => {
   });
 
   const button = {
-    btnAdd: false, 
+    btnAdd: false,
     btnEdit: true,
     btnDelete: true,
     btnDetail: true,
@@ -288,6 +288,7 @@ const AdminOrderManagement = () => {
       currency: "VND",
     }).format(amount || 0);
   };
+  console.log(">> check", formData);
 
   const modalContent = (
     <>
@@ -302,19 +303,17 @@ const AdminOrderManagement = () => {
             </div>
             <Descriptions bordered column={1} size="small">
               <Descriptions.Item label="Họ tên">
-                {formData.customer_info?.name}
+                {formData.full_name}
               </Descriptions.Item>
               <Descriptions.Item label="Email">
-                {formData.customer_info?.email}
+                {formData.email}
               </Descriptions.Item>
               <Descriptions.Item label="Số điện thoại">
-                {formData.customer_info?.phone}
+                {formData.phone}
               </Descriptions.Item>
             </Descriptions>
           </div>
-
           <Divider />
-
           <div>
             <div className="flex items-center gap-2 mb-3">
               <EnvironmentOutlined className="text-green-500 text-lg" />
@@ -335,9 +334,7 @@ const AdminOrderManagement = () => {
               </Descriptions.Item>
             </Descriptions>
           </div>
-
           <Divider />
-
           <div>
             <div className="flex items-center gap-2 mb-3">
               <ShoppingOutlined className="text-purple-500 text-lg" />
@@ -371,9 +368,7 @@ const AdminOrderManagement = () => {
               ))}
             </div>
           </div>
-
           <Divider />
-
           Order Summary
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -397,9 +392,7 @@ const AdminOrderManagement = () => {
               </Descriptions.Item>
             </Descriptions>
           </div>
-
           <Divider />
-
           <Descriptions bordered column={2} size="small">
             <Descriptions.Item label="Mã đơn hàng" span={2}>
               <strong>{formData.order_code}</strong>
@@ -444,10 +437,10 @@ const AdminOrderManagement = () => {
               <Select
                 onChange={(value) => handleInputChange("order_status", value)}
               >
-                <Option value="pending">Pending</Option>
-                <Option value="confirmed">Confirmed</Option>
-                <Option value="completed">Completed</Option>
-                <Option value="cancelled">Cancelled</Option>
+                <Option value="pending">Chờ xác nhận</Option>
+                <Option value="confirmed">Đã xác nhận</Option>
+                <Option value="completed">Hoàn thành</Option>
+                <Option value="cancelled">Đã hủy</Option>
               </Select>
             </Form.Item>
 
@@ -466,8 +459,6 @@ const AdminOrderManagement = () => {
               >
                 <Option value="unpaid">Chưa thanh toán</Option>
                 <Option value="paid">Đã thanh toán</Option>
-                <Option value="refunded">Đã hoàn tiền</Option>
-                <Option value="failed">Thất bại</Option>
               </Select>
             </Form.Item>
           </div>
@@ -487,7 +478,8 @@ const AdminOrderManagement = () => {
               {formData.order_code}
             </Descriptions.Item>
             <Descriptions.Item label="Khách hàng">
-              {formData.customer_info?.name} - {formData.customer_info?.phone}
+              {formData.full_name} -{" "}
+              {formData.phone}
             </Descriptions.Item>
             <Descriptions.Item label="Tổng tiền">
               <strong className="text-red-500">

@@ -100,11 +100,14 @@ Route::post('/reviews', [ReviewController::class, 'createReview']);
 Route::get('/reviews/{productId}', [ReviewController::class, 'getProductByIdProduct']);
 Route::get('/review/order/{orderId}', [ReviewController::class, 'getReviewByOrderId']);
 
+
+Route::get('admin/users/{user}', [UserController::class, 'show']);
+Route::put('admin/users/{user}', [UserController::class, 'update']);
+
+
 Route::middleware(['jwt.auth', 'admin'])->prefix('admin')->group(function () {
     Route::get('users', [UserController::class, 'index']);
     Route::post('users', [UserController::class, 'store']);
-    Route::get('users/{user}', [UserController::class, 'show']);
-    Route::put('users/{user}', [UserController::class, 'update']);
     Route::delete('users/{user}', [UserController::class, 'destroy']);
 });
 

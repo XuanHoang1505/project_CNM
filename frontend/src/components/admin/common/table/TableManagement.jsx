@@ -142,10 +142,10 @@ const TableManagement = ({
                 ? "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800"
                 : item.order_status === "confirmed"
                 ? "px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800"
-                : item.order_status === "pending" 
+                : item.order_status === "pending"
                 ? "px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-800"
                 : "px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800"
-            } 
+            }
           >
             {item.order_status === "completed"
               ? "Hoàn thành"
@@ -168,9 +168,11 @@ const TableManagement = ({
                 : "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800"
             }
           >
-            {item.payment_status === "paid" ? "Đã thanh toán" : "Chưa thanh toán"}
+            {item.payment_status === "paid"
+              ? "Đã thanh toán"
+              : "Chưa thanh toán"}
           </span>
-        );  
+        );
 
       case "avatar":
         return (
@@ -184,7 +186,19 @@ const TableManagement = ({
             }}
           />
         );
-      case "imageUrl":
+      case "thumbnail":
+        return (
+          <img
+            src={item.thumbnail || "https://via.placeholder.com/45"}
+            alt={item.name || ""}
+            className="w-11 h-11 object-cover rounded-full cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleImageClick(item.thumbnail);
+            }}
+          />
+        );
+
       case "poster": {
         // Thêm {} cho mỗi case có khai báo
         return (
@@ -249,22 +263,26 @@ const TableManagement = ({
         );
       case "role":
         return (
-          <span className="flex items-center">
-            {item.role === "ADMIN" && (
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium">
+            {item.role === "ADMIN" ? (
               <>
-                <SafetyOutlined /> Quản Lý
+                <SafetyOutlined className="text-blue-600" />
+                <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                  Quản Lý
+                </span>
               </>
-            )}
-            {item.role === "USER" && (
+            ) : (
               <>
-                <UserOutlined /> Khách Hàng
+                <UserOutlined className="text-green-600" />
+                <span className="text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                  Khách Hàng
+                </span>
               </>
             )}
           </span>
         );
-
       default:
-        return item[column.key] || (item[column.key] === 0 ? 0 : "Null");
+        return item[column.key] || (item[column.key] === 0 ? 0 : "---");
     }
   };
 

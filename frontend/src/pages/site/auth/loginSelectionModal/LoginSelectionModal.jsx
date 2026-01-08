@@ -16,12 +16,13 @@ const LoginSelectionModal = ({
   handleShowLoginModal,
   handleShowSignUpModal,
 }) => {
-  const [loading, setLoading] = useState(false);
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingFacebook, setLoadingFacebook] = useState(false);
   const navigate = useNavigate();
 
 
   const handleGoogleSuccess = async (credentialResponse) => {
-    setLoading(true);
+    setLoadingGoogle(true);
     try {
       const result = await googleLogin(credentialResponse.credential);
       console.log("Google login success:", result);
@@ -40,7 +41,7 @@ const LoginSelectionModal = ({
       console.error("Google login failed:", err);
       toast.error("Đăng nhập Google thất bại!");
     } finally {
-      setLoading(false);
+      setLoadingGoogle(false);
     }
   };
 
@@ -52,7 +53,7 @@ const LoginSelectionModal = ({
   // ===== FACEBOOK LOGIN =====
   const handleFacebookSuccess = async (response) => {
     if (response.accessToken) {
-      setLoading(true);
+      setLoadingFacebook(true);
       try {
         const result = await facebookLogin(response.accessToken);
         console.log("Facebook login success:", result);
@@ -68,7 +69,7 @@ const LoginSelectionModal = ({
         console.error("Facebook login failed:", err);
         toast.error("Đăng nhập Facebook thất bại!");
       } finally {
-        setLoading(false);
+        setLoadingFacebook(false);
       }
     }
   };
@@ -107,7 +108,7 @@ const LoginSelectionModal = ({
             {/* Account Login Button */}
             <button
               onClick={handleShowLoginModal}
-              disabled={loading}
+              disabled={loadingGoogle || loadingFacebook}
               className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LockOutlined className="text-lg" />
@@ -125,7 +126,7 @@ const LoginSelectionModal = ({
                 shape="rectangular"
                 logo_alignment="left"
                 width="100%"
-                disabled={loading}
+                disabled={loadingGoogle || loadingFacebook}
               />
             </div>
 
@@ -140,7 +141,7 @@ const LoginSelectionModal = ({
               render={({ onClick }) => (
                 <button
                   onClick={onClick}
-                  disabled={loading}
+                  disabled={loadingGoogle || loadingFacebook}
                   className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <img
@@ -151,7 +152,7 @@ const LoginSelectionModal = ({
                     className="object-contain"
                   />
                   <span>
-                    {loading ? "Đang xử lý..." : "Đăng nhập bằng Facebook"}
+                    {loadingFacebook ? "Đang xử lý..." : "Đăng nhập bằng Facebook"}
                   </span>
                 </button>
               )}

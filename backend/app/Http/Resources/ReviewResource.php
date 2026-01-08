@@ -36,8 +36,9 @@ class ReviewResource extends JsonResource
             'product_id' => (string) $get('product_id'),
             'user' => [
                 'id'   => (string) $get('user_id'),
-                'name' => $get('user')['name']
-                            ?? ($this->user->name ?? '')
+                'name' => $get('user')['full_name']
+                            ?? ($this->user->full_name ?? ''),
+                'avatar' => $get('user')['avatar'] ?? ($this->user->avatar)            
             ],
             'rating'     => (int) $get('rating', 0),
             'content'    => $get('content', ''),

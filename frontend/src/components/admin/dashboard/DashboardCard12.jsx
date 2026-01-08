@@ -64,7 +64,7 @@ function DashboardCard12({ recentActivities }) {
                     <div className="shrink-0 self-end ml-2">
                       <span className="font-medium text-violet-500 dark:hover:text-violet-400">
                         {activity.amount
-                          ? `${(activity.amount / 100).toLocaleString()}₫`
+                          ? `${(activity.amount).toLocaleString()}₫`
                           : ""}
                       </span>
                     </div>

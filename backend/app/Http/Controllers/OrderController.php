@@ -50,9 +50,7 @@ class OrderController extends Controller
     {
         try {
             $data = $request->validated();
-            
             $user = auth('api')->user(); 
-            
             
             $data['user_id'] = $user->id;
             
