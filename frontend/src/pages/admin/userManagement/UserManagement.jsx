@@ -59,12 +59,12 @@ const UserManagement = () => {
   const userColumns = [
     { key: "avatar", label: "Avatar" },
     { key: "id", label: "ID" },
-    { key: "fullName", label: "Full Name" },
+    { key: "fullName", label: "Họ và tên" },
     { key: "email", label: "Email" },
-    { key: "role", label: "Role" },
-    { key: "phoneNumber", label: "Phone Number" },
-    { key: "gender", label: "Gender" },
-    { key: "status", label: "Status" },
+    { key: "role", label: "Vai trò" },
+    { key: "phoneNumber", label: "Sđt" },
+    { key: "gender", label: "Giới tính" },
+    { key: "status", label: "Trạng thái" },
   ];
 
   const keysToRemove = ["id"];

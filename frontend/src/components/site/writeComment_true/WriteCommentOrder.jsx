@@ -66,6 +66,7 @@ function WriteCommentOrder() {
 
         fetchProduct();
     }, [slug]);
+    
 
     const handleSubmitReview = async (e) => {
         e.preventDefault();
@@ -96,13 +97,15 @@ function WriteCommentOrder() {
 
             formData.append("rating", rating);
             formData.append("content", reviewContent);
-            formData.append("user_id", user.userId);  // TODO: replace with real user
+            formData.append("user_id", user.id);  // TODO: replace with real user
             formData.append("product_id", productId);
             formData.append("order_id", orderId);
 
             reviewImages.forEach(img => {
                 formData.append("images[]", img.file);
             });
+
+            
 
             // Submit API
             const result = await ReviewService.createReview(formData);
