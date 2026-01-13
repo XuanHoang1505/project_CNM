@@ -97,7 +97,7 @@ function WriteCommentOrder() {
 
             formData.append("rating", rating);
             formData.append("content", reviewContent);
-            formData.append("user_id", user.id);  // TODO: replace with real user
+            formData.append("user_id", user.userId);  // TODO: replace with real user
             formData.append("product_id", productId);
             formData.append("order_id", orderId);
 

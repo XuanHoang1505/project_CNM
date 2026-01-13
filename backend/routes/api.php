@@ -103,10 +103,10 @@ Route::get('/review/order/{orderId}', [ReviewController::class, 'getReviewByOrde
 
 Route::get('admin/users/{user}', [UserController::class, 'show']);
 Route::put('admin/users/{user}', [UserController::class, 'update']);
+Route::get('admin/users', [UserController::class, 'index']);
 
 
 Route::middleware(['jwt.auth', 'admin'])->prefix('admin')->group(function () {
-    Route::get('users', [UserController::class, 'index']);
     Route::post('users', [UserController::class, 'store']);
     Route::delete('users/{user}', [UserController::class, 'destroy']);
 });

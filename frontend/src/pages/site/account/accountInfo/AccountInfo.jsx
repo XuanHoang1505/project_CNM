@@ -23,10 +23,10 @@ function AccountInfo() {
   
 
   useEffect(() => {
-    if (user?.id) {
-      fetchUserProfile(user.id);
+    if (user?.userId) {
+      fetchUserProfile(user.userId);
     }
-  }, [user?.id]);
+  }, [user?.userId]);
 
   const fetchUserProfile = async (userId) => {
     try {
