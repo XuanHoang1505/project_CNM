@@ -84,6 +84,8 @@ const TableManagement = ({
             "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800",
           DISABLED:
             "px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800",
+          INACTIVE:
+            "px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800",
           PENDING:
             "px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-800",
           COMPLETED:
@@ -97,6 +99,7 @@ const TableManagement = ({
           PUBLISHED: "Đã xuất bản",
           REJECTED: "Đã từ chối",
           DISABLED: "Vô hiệu hóa",
+          INACTIVE: "Vô hiệu hóa",
           PENDING: "Đang chờ duyệt",
           COMPLETED: "Hoàn thành",
           EXPIRED: "Đã hết hạn",
@@ -129,6 +132,48 @@ const TableManagement = ({
         );
       }
 
+      case "order_status":
+        return (
+          <span
+            className={
+              item.order_status === "completed"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800"
+                : item.order_status === "canceled"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800"
+                : item.order_status === "confirmed"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800"
+                : item.order_status === "pending"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-yellow-100 text-yellow-800"
+                : "px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800"
+            }
+          >
+            {item.order_status === "completed"
+              ? "Hoàn thành"
+              : item.order_status === "confirmed"
+              ? "Đã xác nhận"
+              : item.order_status === "canceled"
+              ? "Đã hủy"
+              : item.order_status === "pending"
+              ? "Đang xử lý"
+              : "Chưa xử lý"}
+          </span>
+        );
+
+      case "payment_status":
+        return (
+          <span
+            className={
+              item.payment_status === "paid"
+                ? "px-2 py-1 rounded text-xs font-semibold bg-green-100 text-green-800"
+                : "px-2 py-1 rounded text-xs font-semibold bg-red-100 text-red-800"
+            }
+          >
+            {item.payment_status === "paid"
+              ? "Đã thanh toán"
+              : "Chưa thanh toán"}
+          </span>
+        );
+
       case "avatar":
         return (
           <img
@@ -141,7 +186,19 @@ const TableManagement = ({
             }}
           />
         );
-      case "imageUrl":
+      case "thumbnail":
+        return (
+          <img
+            src={item.thumbnail || "https://via.placeholder.com/45"}
+            alt={item.name || ""}
+            className="w-11 h-11 object-cover rounded-full cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleImageClick(item.thumbnail);
+            }}
+          />
+        );
+
       case "poster": {
         // Thêm {} cho mỗi case có khai báo
         return (
@@ -191,7 +248,9 @@ const TableManagement = ({
       case "gender":
         return (
           <span className={`rounded-3 px-1 py-1 `}>
-            {item.gender === "1" ? (
+            {item.gender === "" || item.gender === null ? (
+              <span className="text-gray-400 italic">Chưa có</span>
+            ) : item.gender === "1" ? (
               <>
                 <ManOutlined /> Nam
               </>
@@ -202,25 +261,28 @@ const TableManagement = ({
             )}
           </span>
         );
-
       case "role":
         return (
-          <span className="flex items-center">
-            {item.role === "ADMIN" && (
+          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium">
+            {item.role === "ADMIN" ? (
               <>
-                <SafetyOutlined /> Quản Lý
+                <SafetyOutlined className="text-blue-600" />
+                <span className="text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full">
+                  Quản Lý
+                </span>
               </>
-            )}
-            {item.role === "USER" && (
+            ) : (
               <>
-                <UserOutlined /> Khách Hàng
+                <UserOutlined className="text-green-600" />
+                <span className="text-green-700 bg-green-50 px-2 py-0.5 rounded-full">
+                  Khách Hàng
+                </span>
               </>
             )}
           </span>
         );
-
       default:
-        return item[column.key] || (item[column.key] === 0 ? 0 : "Null");
+        return item[column.key] || (item[column.key] === 0 ? 0 : "---");
     }
   };
 

@@ -16,9 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'jwt.verify' => JwtMiddleware::class,
-        ]);
-        $middleware->alias([
-            'admin' => AdminMiddleware::class,
+            'admin'     => AdminMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

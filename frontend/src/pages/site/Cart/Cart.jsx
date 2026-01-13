@@ -5,6 +5,7 @@ import DiscountService from '@/services/site/DiscountService';
 import AddressService from '@/services/site/AddressService';
 import ShippingFeeService from '@/services/admin/ShippingFeeService';
 import { useNavigate } from "react-router-dom";
+import { toast } from 'react-toastify';
 
 function Cart() {
     const [cartItems, setCartItems] = useState([])
@@ -150,12 +151,23 @@ function Cart() {
             localStorage.setItem("cart", JSON.stringify(updated));
             return updated;
         });
+        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const updatedCart = cart.filter(item => item.id !== id);
+        localStorage.setItem('cart', JSON.stringify(updatedCart));
+        
+        // Trigger update
+        window.dispatchEvent(new Event('cartUpdated'));
+
+        toast.success('Đã xóa sản phẩm khỏi giỏ hàng', {
+            icon: '🗑️',
+            duration: 2000,
+        });
     };
 
     const handleApplyPromo = async () => {
         const code = promoCode.trim().toUpperCase();
         if (!code) {
-            alert("Please enter a discount code!");
+            toast.error("Please enter a discount code!");
             return;
         }
 
@@ -164,12 +176,12 @@ function Cart() {
             const discountData = res.data ?? res;
 
             if (!discountData.is_active) {
-                alert("This discount code is inactive or expired!");
+                toast.error("This discount code is inactive or expired!");
                 return;
             }
 
             if (subtotal < discountData.min_order_value) {
-                alert(
+                toast.error(
                     `A minimum order value of ${discountData.min_order_value.toLocaleString()} VND is required to apply this discount code.`
                 );
                 return;
@@ -188,10 +200,10 @@ function Cart() {
             setDiscountAmount(newAmount);
             setAppliedDiscount(discountData);
 
-            alert(`Applied successfully! You saved ${newAmount.toLocaleString()} VND`);
+            toast.success(`Applied successfully! You saved ${newAmount.toLocaleString()} VND`);
 
         } catch (error) {
-            alert("Invalid or expired discount code!");
+            toast.error("Invalid or expired discount code!");
             console.error(error);
         }
     };

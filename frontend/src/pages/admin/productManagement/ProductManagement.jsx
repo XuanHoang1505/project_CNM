@@ -15,11 +15,12 @@ const ProductManagement = () => {
 
   const productColumns = [
     { key: "id", label: "ID" },
-    { key: "name", label: "Name" },
+    { key: "thumbnail", label: "Thumbnail"},
+    { key: "name", label: "Tên sản phẩm" },
     { key: "slug", label: "Slug" },
-    { key: "description", label: "Description" },
-    { key: "price", label: "Price" },
-    { key: "stock", label: "Count In Stock" },
+    { key: "description", label: "Mô tả" },
+    { key: "price", label: "Giá" },
+    { key: "stock", label: "Tồn kho" },
     { key: "is_active", label: "Trạng thái" },
   ];
 

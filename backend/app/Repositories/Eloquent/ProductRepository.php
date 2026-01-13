@@ -3,6 +3,7 @@
 namespace App\Repositories\Eloquent;
 
 use App\Http\Resources\ProductResource;
+use App\Models\Category;
 use App\Models\Product;
 use App\Repositories\Interfaces\ProductRepositoryInterface;
 
@@ -10,47 +11,51 @@ class ProductRepository implements ProductRepositoryInterface
 {
     public function getAll(int $page = 1, int $perPage = 15)
     {
-        return Product::paginate($perPage, ['*'], 'page', $page);
+       return Product::with(['category', 'brand', 'images', 'variants'])
+        ->where('is_active', true)
+        ->paginate($perPage, ['*'], 'page', $page);
+
     }
 
-    public function findById(string $id)
+    public function findById(int $id)
     {
         return Product::find($id);
     }
 
     public function findBySlug(string $slug)
     {
-        $product = Product::where('slug', $slug)->first();
+        $product = Product::with(['images', 'variants'])
+            ->where('slug', $slug)
+            ->firstOrFail();
 
-        if (!$product) {
-            return response()->json([
-                'message' => 'Sản phẩm không tồn tại'
-            ], 404);
-        }
-
-        // Trả về Resource chỉ khi $product tồn tại
         return new ProductResource($product);
-
     }
+
 
     public function findByCategorySlug(string $categorySlug, int $page = 1, int $perPage = 15)
     {
-        
-        return Product::where('category.slug', $categorySlug)
+        return Product::with(['category', 'brand', 'images', 'variants'])
+            ->whereHas('category', function($q) use ($categorySlug) {
+                $q->where('slug', $categorySlug);
+            })
             ->where('is_active', true)
             ->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function findByCategoryName(string $categoryName, int $perPage = 15)
     {
-        return Product::where('category.name', $categoryName)
+        return Product::whereHas('category', function($q) use ($categoryName) {
+                $q->where('name', $categoryName);
+            })
             ->where('is_active', true)
             ->paginate($perPage);
     }
 
     public function findByParentCategory(string $parentName, int $perPage = 15)
     {
-        return Product::where('category.parent', $parentName)
+        return Product::whereHas('category', function($q) use ($parentName) {
+                $q->where('parent', $parentName);
+            })
             ->where('is_active', true)
             ->paginate($perPage);
     }
@@ -58,47 +63,67 @@ class ProductRepository implements ProductRepositoryInterface
     public function search(string $keyword, int $page = 1, int $perPage = 12)
     {
         if (empty(trim($keyword))) {
-            return Product::where('is_active', true)
+            return Product::with(['category', 'brand', 'images', 'variants'])
+                ->where('is_active', true)
                 ->paginate($perPage, ['*'], 'page', $page);
         }
 
-        $query = Product::where('is_active', true)
+        $query = Product::with(['category', 'brand', 'images', 'variants'])
+            ->where('products.is_active', true)
             ->where(function($q) use ($keyword) {
-                $q->where('name', 'like', "%{$keyword}%")
-                ->orWhere('description', 'like', "%{$keyword}%")
-                ->orWhere('slug', 'like', "%{$keyword}%")
-                ->orWhere('category.name', 'like', "%{$keyword}%")
-                ->orWhere('brand.name', 'like', "%{$keyword}%");
+                $q->where('products.name', 'like', "%{$keyword}%")
+                ->orWhere('products.description', 'like', "%{$keyword}%")
+                ->orWhere('products.slug', 'like', "%{$keyword}%")
+                ->orWhereHas('category', function($catQuery) use ($keyword) {
+                    $catQuery->where('name', 'like', "%{$keyword}%");
+                })
+                ->orWhereHas('brand', function($brandQuery) use ($keyword) {
+                    $brandQuery->where('name', 'like', "%{$keyword}%");
+                });
             })
-            ->orderBy('created_at', 'desc');
+            ->orderBy('products.created_at', 'desc');
 
         return $query->paginate($perPage, ['*'], 'page', $page);
     }
 
     public function filter(array $filters,int $current, int $perPage = 9)
     {
-        $query = Product::where('is_active', true);
+        // Eager load relationships needed for ProductResource
+        $query = Product::with(['category', 'brand', 'images', 'variants'])
+            ->where('is_active', true);
 
-        if (isset($filters['categories'])) {
-            $query->whereIn('category.slug', $filters['categories']);
+        // Filter by categories - use whereHas to check category relationship
+        if (isset($filters['categories']) && !empty($filters['categories'])) {
+            $query->whereHas('category', function($q) use ($filters) {
+                $q->whereIn('slug', $filters['categories']);
+            });
         }
 
+        // Filter by price range
         if (isset($filters['minPrice']) || isset($filters['maxPrice'])) {
             $minPrice = $filters['minPrice'] ?? 0;
             $maxPrice = $filters['maxPrice'] ?? PHP_INT_MAX;
             $query->whereBetween('price', [$minPrice, $maxPrice]);
         }
 
-        if (isset($filters['colors'])) {
-            $query->whereIn('variants.color', $filters['colors']);
+        // Filter by colors - use whereHas to check if product has variant with matching color
+        if (isset($filters['colors']) && !empty($filters['colors'])) {
+            $query->whereHas('variants', function($q) use ($filters) {
+                $q->whereIn('color', $filters['colors']);
+            });
         }
 
-        if(isset($filters['sizes'])) {
-            $query->whereIn('variants.size', $filters['sizes']);
+        // Filter by sizes - use whereHas to check if product has variant with matching size
+        if (isset($filters['sizes']) && !empty($filters['sizes'])) {
+            $query->whereHas('variants', function($q) use ($filters) {
+                $q->whereIn('size', $filters['sizes']);
+            });
         }
 
-        if(isset($filters['dressStyles'])) {
-            $query->whereIn('dressStyle.slug', $filters['dressStyles']);
+        // Filter by dress styles - direct column filter (dress_style is string column)
+        // Note: Assuming dress_style stores the slug value, if it stores name, need to map slug to name
+        if (isset($filters['dressStyles']) && !empty($filters['dressStyles'])) {
+            $query->whereIn('dress_style', $filters['dressStyles']);
         }
 
         return $query->paginate($perPage, ['*'], 'page', $current);
@@ -114,53 +139,92 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function getNew(int $limit = 4)
     {
-        // Sắp xếp theo created_at mới nhất
-        return Product::where('is_active', true)
-            ->orderBy('created_at', 'desc')
+        return Product::with([
+                'primaryImage:id,product_id,image_url'
+            ])
+            ->select(
+                'id',
+                'name',
+                'slug',
+                'price',
+                'compare_price',
+                'is_featured',
+                'created_at'
+            )
+            ->where('is_active', true)
+            ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
     }
+
 
     public function getBestseller(int $limit = 4)
     {
-        // Lấy sản phẩm featured hoặc sản phẩm có giá compare_price cao
-        // (sản phẩm giảm giá thường bán chạy)
-        return Product::where('is_active', true)
-            ->where(function($query) {
+        return Product::with([
+                'primaryImage:id,product_id,image_url'
+            ])
+            ->select(
+                'id',
+                'name',
+                'slug',
+                'price',
+                'compare_price',
+                'is_featured',
+                'created_at'
+            )
+            ->where('is_active', true)
+            ->where(function ($query) {
                 $query->where('is_featured', true)
-                    ->orWhereNotNull('compare_price');
+                    ->orWhere(function ($q) {
+                        $q->whereNotNull('compare_price')
+                            ->whereColumn('compare_price', '>', 'price');
+                    });
             })
-            ->orderBy('is_featured', 'desc')
-            ->orderBy('created_at', 'desc')
+            ->orderByDesc('is_featured')
+            ->orderByDesc('created_at')
             ->limit($limit)
             ->get();
     }
 
+
     public function getAllCategories()
     {
-        return Product::raw(function($collection) {
-            return $collection->distinct('category');
-        });
+        return Category::select('id', 'name', 'slug')->get();
     }
 
     public function getAllDressStyles()
     {
-        return Product::raw(function($collection) {
-            return $collection->distinct('dressStyle');
-        });
+        return Product::whereNotNull('dress_style')
+            ->where('is_active', true)
+            ->distinct()
+            ->pluck('dress_style')
+            ->map(function($style) {
+                // Return as object with name and slug for frontend compatibility
+                // Assuming dress_style stores the name, create slug from it
+                return [
+                    'name' => $style,
+                    'slug' => \Illuminate\Support\Str::slug($style)
+                ];
+            })
+            ->values();
     }
+
 
     public function getAllBrands()
     {
-        return Product::raw(function($collection) {
-            return $collection->distinct('brand');
-        });
+        return Product::join('brands', 'products.brand_id', '=', 'brands.id')
+            ->where('products.is_active', true)
+            ->select('brands.id', 'brands.name', 'brands.slug')
+            ->distinct()
+            ->get();
     }
 
-    public function getRelatedProducts(string $productId, string $categorySlug, int $limit = 6)
+    public function getRelatedProducts(int $productId, int $categoryId, int $limit = 6)
     {
-        return Product::where('category.slug', $categorySlug)
-            ->where('_id', '!=', $productId)
+        return Product::whereHas('category', function($q) use ($categoryId) {
+                $q->where('id', $categoryId);
+            })
+            ->where('id', '!=', $productId)
             ->where('is_active', true)
             ->limit($limit)
             ->get();
@@ -171,7 +235,7 @@ class ProductRepository implements ProductRepositoryInterface
         return Product::create($data);
     }
 
-    public function update(string $id, array $data): Product|bool
+    public function update(int $id, array $data): Product|bool
     {
         $product = Product::find($id);
         
@@ -189,7 +253,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product;
     }
 
-    public function delete(string $id)
+    public function delete(int $id)
     {
         $product = Product::find($id);
         
@@ -200,7 +264,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->update(['is_active' => false]);
     }
 
-    public function forceDelete(string $id)
+    public function forceDelete(int $id)
     {
         $product = Product::find($id);
         
@@ -211,7 +275,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->delete();
     }
 
-    public function updateStock(string $id, int $quantity)
+    public function updateStock(int $id, int $quantity)
     {
         $product = Product::find($id);
         
@@ -222,7 +286,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->update(['stock' => $quantity]);
     }
 
-    public function decreaseStock(string $id, int $quantity)
+    public function decreaseStock(int $id, int $quantity)
     {
         $product = Product::find($id);
         
@@ -233,7 +297,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->decrement('stock', $quantity);
     }
 
-    public function increaseStock(string $id, int $quantity)
+    public function increaseStock(int $id, int $quantity)
     {
         $product = Product::find($id);
         
@@ -244,7 +308,7 @@ class ProductRepository implements ProductRepositoryInterface
         return $product->increment('stock', $quantity);
     }
 
-    public function isInStock(string $id, int $quantity = 1)
+    public function isInStock(int $id, int $quantity = 1)
     {
         $product = Product::find($id);
         

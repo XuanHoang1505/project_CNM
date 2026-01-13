@@ -19,6 +19,8 @@ function AccountInfo() {
   const [profile, setProfile] = useState({});
   const [selectedAvatar, setSelectedAvatar] = useState(null);
   const [fileList, setFileList] = useState([]);
+  console.log(user);
+  
 
   useEffect(() => {
     if (user?.userId) {
@@ -31,8 +33,9 @@ function AccountInfo() {
       setLoading(true);
       const data = await UserService.getUserById(userId);
       setProfile(data);
+
+            
       
-      // Set form values
       form.setFieldsValue({
         fullName: data.fullName || "",
         phoneNumber: data.phoneNumber || "",

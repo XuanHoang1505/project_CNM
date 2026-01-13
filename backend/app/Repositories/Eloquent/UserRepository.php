@@ -15,32 +15,31 @@ class UserRepository implements UserRepositoryInterface
     {
         return User::find($id);
     }
+
     public function create(array $data)
     {
         return User::create($data);
     }
+
     public function update($id, array $data)
     {
         $user = User::findOrFail($id);
         $user->update($data);
         
-        return $user;
+        return $user->fresh();
     }
+
     public function delete($id)
     {
         return User::destroy($id);
     }
-        /**
-     * Tìm user theo email
-     */
+
     public function findByEmail(string $email)
     {
         return User::where('email', $email)->first();
     }
 
-    /**
-     * Cập nhật mật khẩu
-     */
+
     public function updatePassword(string $userId, string $password): bool
     {
         $user = User::find($userId);
@@ -53,12 +52,17 @@ class UserRepository implements UserRepositoryInterface
         return $user->save();
     }
 
-    /**
-     * Kiểm tra email có tồn tại không
-     */
+
     public function emailExists(string $email): bool
     {
         return User::where('email', $email)->exists();
+    }
+    
+    public function findBySocialProvider(string $provider, string $providerId)
+    {
+        return User::where('provider', $provider)
+                   ->where('provider_id', $providerId)
+                   ->first();
     }
     
 }

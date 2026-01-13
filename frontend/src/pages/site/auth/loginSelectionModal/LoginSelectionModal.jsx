@@ -1,10 +1,14 @@
-import React, { useEffect } from "react";
+import React, { useState } from "react";
 import { Modal } from "antd";
 import { LockOutlined } from "@ant-design/icons";
+import { GoogleLogin } from "@react-oauth/google";
+import FacebookLogin from "@greatsumini/react-facebook-login";
+import { toast } from "react-toastify";
 import iconFB from "@/assets/site/icons/facebook.png";
 import iconGG from "@/assets/site/icons/google.png";
 
-// import { googleLogin, facebookLogin } from "../../../../services/site/ExternalAuthService";
+import { googleLogin, facebookLogin } from "../../../../services/site/ExternalAuthService";
+import { useNavigate } from "react-router-dom";
 
 const LoginSelectionModal = ({
   show,
@@ -12,68 +16,68 @@ const LoginSelectionModal = ({
   handleShowLoginModal,
   handleShowSignUpModal,
 }) => {
-  // useEffect(() => {
-  //   // Load Facebook SDK
-  //   window.fbAsyncInit = function () {
-  //     window.FB.init({
-  //       appId: "YOUR_FACEBOOK_APP_ID", // ⚠️ thay bằng AppId FB của bạn
-  //       cookie: true,
-  //       xfbml: true,
-  //       version: "v19.0",
-  //     });
-  //   };
+  const [loadingGoogle, setLoadingGoogle] = useState(false);
+  const [loadingFacebook, setLoadingFacebook] = useState(false);
+  const navigate = useNavigate();
 
-  //   (function (d, s, id) {
-  //     let js,
-  //       fjs = d.getElementsByTagName(s)[0];
-  //     if (d.getElementById(id)) {
-  //       return;
-  //     }
-  //     js = d.createElement(s);
-  //     js.id = id;
-  //     js.src = "https://connect.facebook.net/en_US/sdk.js";
-  //     fjs.parentNode.insertBefore(js, fjs);
-  //   })(document, "script", "facebook-jssdk");
-  // }, []);
 
-  // // ===== GOOGLE LOGIN =====
-  // const handleGoogleLogin = () => {
-  //   /* global google */
-  //   google.accounts.id.initialize({
-  //     client_id: "727146363826-0vlu2b0jg50faur3fu9rpmktnpuaqumi.apps.googleusercontent.com",
-  //     callback: async (response) => {
-  //       try {
-  //         const id_token = response.credential;
-  //         const result = await googleLogin(id_token); // gọi API backend
-  //         console.log("Google login success:", result);
-  //         handleClose();
-  //       } catch (err) {
-  //         console.error("Google login failed:", err);
-  //       }
-  //     },
-  //   });
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoadingGoogle(true);
+    try {
+      const result = await googleLogin(credentialResponse.credential);
+      console.log("Google login success:", result);
+      
+      toast.success("Đăng nhập thành công!");
+      handleClose();
 
-  //   google.accounts.id.prompt(); // hiện popup chọn tài khoản
-  // };
+      if(result.user.role == "ADMIN")
+        navigate('/admin');
+      
+      // Reload hoặc redirect sau khi đăng nhập thành công
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+    } catch (err) {
+      console.error("Google login failed:", err);
+      toast.error("Đăng nhập Google thất bại!");
+    } finally {
+      setLoadingGoogle(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.error("Google login failed");
+    toast.error("Đăng nhập Google thất bại!");
+  };
 
   // ===== FACEBOOK LOGIN =====
-  // const handleFacebookLogin = () => {
-  //   window.FB.login(
-  //     async (response) => {
-  //       if (response.authResponse) {
-  //         const accessToken = response.authResponse.accessToken;
-  //         try {
-  //           const result = await facebookLogin(accessToken); // gọi API backend
-  //           console.log("Facebook login success:", result);
-  //           handleClose();
-  //         } catch (err) {
-  //           console.error("Facebook login failed:", err);
-  //         }
-  //       }
-  //     },
-  //     { scope: "public_profile,email" }
-  //   );
-  // };
+  const handleFacebookSuccess = async (response) => {
+    if (response.accessToken) {
+      setLoadingFacebook(true);
+      try {
+        const result = await facebookLogin(response.accessToken);
+        console.log("Facebook login success:", result);
+        
+        toast.success("Đăng nhập thành công!");
+        handleClose();
+        
+        // Reload hoặc redirect sau khi đăng nhập thành công
+        setTimeout(() => {
+          window.location.reload();
+        }, 500);
+      } catch (err) {
+        console.error("Facebook login failed:", err);
+        toast.error("Đăng nhập Facebook thất bại!");
+      } finally {
+        setLoadingFacebook(false);
+      }
+    }
+  };
+
+  const handleFacebookError = (error) => {
+    console.error("Facebook login error:", error);
+    toast.error("Đăng nhập Facebook thất bại!");
+  };
 
   return (
     <Modal
@@ -104,41 +108,55 @@ const LoginSelectionModal = ({
             {/* Account Login Button */}
             <button
               onClick={handleShowLoginModal}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700"
+              disabled={loadingGoogle || loadingFacebook}
+              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <LockOutlined className="text-lg" />
               <span>Đăng nhập bằng Tài khoản Clothes Shop</span>
             </button>
 
-            {/* Google Login Button */}
-            <button
-              // onClick={handleGoogleLogin}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700"
-            >
-              <img
-                src={iconGG}
-                width={24}
-                height={24}
-                alt="Google"
-                className="object-contain"
+            {/* Google Login Button - Wrapper */}
+            <div className="w-full">
+              <GoogleLogin
+                onSuccess={handleGoogleSuccess}
+                onError={handleGoogleError}
+                theme="outline"
+                size="large"
+                text="continue_with"
+                shape="rectangular"
+                logo_alignment="left"
+                width="100%"
+                disabled={loadingGoogle || loadingFacebook}
               />
-              <span>Đăng nhập bằng Google</span>
-            </button>
+            </div>
 
             {/* Facebook Login Button */}
-            <button
-              // onClick={handleFacebookLogin}
-              className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700"
-            >
-              <img
-                src={iconFB}
-                width={24}
-                height={24}
-                alt="Facebook"
-                className="object-contain"
-              />
-              <span>Đăng nhập bằng Facebook</span>
-            </button>
+            <FacebookLogin
+              appId={import.meta.env.VITE_FACEBOOK_APP_ID}
+              onSuccess={handleFacebookSuccess}
+              onFail={handleFacebookError}
+              onProfileSuccess={(response) => {
+                console.log("Get Profile Success:", response);
+              }}
+              render={({ onClick }) => (
+                <button
+                  onClick={onClick}
+                  disabled={loadingGoogle || loadingFacebook}
+                  className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 font-medium text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <img
+                    src={iconFB}
+                    width={24}
+                    height={24}
+                    alt="Facebook"
+                    className="object-contain"
+                  />
+                  <span>
+                    {loadingFacebook ? "Đang xử lý..." : "Đăng nhập bằng Facebook"}
+                  </span>
+                </button>
+              )}
+            />
           </div>
 
           {/* Sign Up Link */}

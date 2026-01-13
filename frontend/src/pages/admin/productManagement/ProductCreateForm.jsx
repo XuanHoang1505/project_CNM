@@ -15,6 +15,7 @@ import {
   Typography,
   Steps,
   Space,
+  Select,
 } from "antd";
 import {
   SaveOutlined,
@@ -29,14 +30,29 @@ import {
 import { toast } from "react-toastify";
 import ProductService from "@/services/site/ProductService";
 import { useNavigate } from "react-router-dom";
+import CategoryService from "@/services/admin/CategoryService";
+import BrandService from "@/services/admin/BrandService";
 
 const { TextArea } = Input;
 const { Title, Text } = Typography;
+const { Option } = Select;
 
 const ProductCreateForm = () => {
   const navigate = useNavigate();
   const [saving, setSaving] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [categories, setCategories] = useState([]);
+  const [brands, setBrands] = useState([]);
+
+  const dressStyles = [
+    { value: "Casual", label: "Casual - Thường ngày" },
+    { value: "Formal", label: "Formal - Trang trọng" },
+    { value: "Sport", label: "Sport - Thể thao" },
+    { value: "Business", label: "Business - Công sở" },
+    { value: "Street", label: "Street - Đường phố" },
+    { value: "Vintage", label: "Vintage - Cổ điển" },
+  ];
 
   const [product, setProduct] = useState({
     name: "",
@@ -45,48 +61,48 @@ const ProductCreateForm = () => {
     compare_price: 0,
     material: "",
     care_instructions: "",
-    category: { name: "" },
-    brand: { name: "" },
-    dressStyle: { name: "", slug: "" },
-    dimensions: {
-      length: "",
-      chest: "",
-      shoulder: "",
-    },
+    category_id: null,
+    brand_id: null,
+    dress_style: null,
     variants: [
       { size: "S", color: "black", stock: 0, price: 0 },
       { size: "M", color: "black", stock: 0, price: 0 },
       { size: "L", color: "black", stock: 0, price: 0 },
     ],
     images: [],
-    tags: [],
     is_featured: false,
     is_active: true,
   });
   const [imagePreviews, setImagePreviews] = useState([]);
 
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const data = await CategoryService.getCategories();
+      setCategories(data);
+    } catch (error) {
+      console.error("Lỗi khi tải danh mục:", error);
+    }finally {
+      setLoading(false);
+    }
+  }
+
+  const fetchBrands = async () => {
+    try {
+      const data = await BrandService.getBrands();
+      setBrands(data);
+    } catch (error) {
+      console.error("Lỗi khi tải thương hiệu:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCategories();
+    fetchBrands();
+  }, []);
+
   const updateField = (field, value) => {
     setProduct((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const updateNestedField = (parentField, childField, value) => {
-    setProduct((prev) => ({
-      ...prev,
-      [parentField]: {
-        ...prev[parentField],
-        [childField]: value,
-      },
-    }));
-  };
-
-  const updateDimension = (dimension, value) => {
-    setProduct((prev) => ({
-      ...prev,
-      dimensions: {
-        ...prev.dimensions,
-        [dimension]: value,
-      },
-    }));
   };
 
   const updateVariant = (index, field, value) => {
@@ -136,7 +152,6 @@ const ProductCreateForm = () => {
     const newPreviews = [];
 
     files.forEach((file) => {
-      // Validate
       if (!file.type.startsWith("image/")) {
         message.error(`${file.name} không phải là file ảnh`);
         return;
@@ -148,7 +163,6 @@ const ProductCreateForm = () => {
       }
 
       const previewUrl = URL.createObjectURL(file);
-
       validFiles.push(file);
       newPreviews.push(previewUrl);
     });
@@ -159,8 +173,6 @@ const ProductCreateForm = () => {
     }));
 
     setImagePreviews((prev) => [...prev, ...newPreviews]);
-
-    // Reset input
     e.target.value = "";
   };
 
@@ -185,20 +197,19 @@ const ProductCreateForm = () => {
 
   const validateStep = (step) => {
     switch (step) {
-      case 0: // Basic Info
+      case 0:
         if (!product.name?.trim()) {
           message.error("Vui lòng nhập tên sản phẩm");
           return false;
         }
-        
         if (product.price <= 0) {
           message.error("Giá sản phẩm phải lớn hơn 0");
           return false;
         }
         return true;
-      case 1: // Details - optional
+      case 1:
         return true;
-      case 2: // Variants
+      case 2:
         if (product.variants.length === 0) {
           message.error("Phải có ít nhất 1 biến thể");
           return false;
@@ -224,11 +235,41 @@ const ProductCreateForm = () => {
 
     try {
       setSaving(true);
-      const response = await ProductService.createProduct(product);
+
+      const formData = new FormData();
+
+      formData.append("name", product.name);
+      formData.append("description", product.description || "");
+      formData.append("price", product.price);
+      formData.append("compare_price", product.compare_price || 0);
+
+      if (product.category_id) {
+        formData.append("category_id", product.category_id);
+      }
+      if (product.brand_id) {
+        formData.append("brand_id", product.brand_id);
+      }
+
+      formData.append("material", product.material || "");
+      formData.append("care_instructions", product.care_instructions || "");
+      if (product.dress_style) {
+        formData.append("dress_style", product.dress_style);
+      }
+
+      formData.append("variants", JSON.stringify(product.variants));
+
+      product.images.forEach((file) => {
+        formData.append("images[]", file);
+      });
+
+      formData.append("is_featured", product.is_featured ? 1 : 0);
+      formData.append("is_active", product.is_active ? 1 : 0);
+
+      const response = await ProductService.createProduct(formData);
       toast.success("Tạo sản phẩm thành công!");
       navigate(`/admin/product/${response.data.slug}`);
     } catch (error) {
-      message.error("Có lỗi khi tạo sản phẩm");
+      message.error(error.response?.data?.message || "Có lỗi khi tạo sản phẩm");
       console.error(error);
     } finally {
       setSaving(false);
@@ -341,8 +382,6 @@ const ProductCreateForm = () => {
         <div className="space-y-4">
           <Row gutter={16}>
             <Col span={24}>
-              {" "}
-              {/* Thay span={12} thành span={24} */}
               <div>
                 <label className="block mb-2 font-medium">
                   Tên sản phẩm <span className="text-red-500">*</span>
@@ -413,27 +452,49 @@ const ProductCreateForm = () => {
             <Col span={12}>
               <div>
                 <label className="block mb-2 font-medium">Danh mục</label>
-                <Input
+                <Select
                   size="large"
-                  placeholder="Áo thun, Quần jean..."
-                  value={product.category?.name}
-                  onChange={(e) =>
-                    updateNestedField("category", "name", e.target.value)
+                  placeholder="Chọn danh mục"
+                  style={{ width: "100%" }}
+                  value={product.category_id}
+                  onChange={(value) => updateField("category_id", value)}
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                   }
-                />
+                  allowClear
+                >
+                  {categories.map((cat) => (
+                    <Option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </Option>
+                  ))}
+                </Select>
               </div>
             </Col>
             <Col span={12}>
               <div>
                 <label className="block mb-2 font-medium">Thương hiệu</label>
-                <Input
+                <Select
                   size="large"
-                  placeholder="Nike, Adidas..."
-                  value={product.brand?.name}
-                  onChange={(e) =>
-                    updateNestedField("brand", "name", e.target.value)
+                  placeholder="Chọn thương hiệu"
+                  style={{ width: "100%" }}
+                  value={product.brand_id}
+                  onChange={(value) => updateField("brand_id", value)}
+                  showSearch
+                  optionFilterProp="children"
+                  filterOption={(input, option) =>
+                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                   }
-                />
+                  allowClear
+                >
+                  {brands.map((brand) => (
+                    <Option key={brand.id} value={brand.id}>
+                      {brand.name}
+                    </Option>
+                  ))}
+                </Select>
               </div>
             </Col>
           </Row>
@@ -481,94 +542,48 @@ const ProductCreateForm = () => {
       title: "Chi tiết sản phẩm",
       content: (
         <div className="space-y-4">
-          <div>
-            <label className="block mb-2 font-medium">Chất liệu</label>
-            <Input
-              size="large"
-              placeholder="Cotton 100%, Polyester..."
-              value={product.material}
-              onChange={(e) => updateField("material", e.target.value)}
-            />
-          </div>
+          <Row gutter={16}>
+            <Col span={12}>
+              <div>
+                <label className="block mb-2 font-medium">Chất liệu</label>
+                <Input
+                  size="large"
+                  placeholder="Cotton 100%, Polyester..."
+                  value={product.material}
+                  onChange={(e) => updateField("material", e.target.value)}
+                />
+              </div>
+            </Col>
+            <Col span={12}>
+              <div>
+                <label className="block mb-2 font-medium">Phong cách</label>
+                <Select
+                  size="large"
+                  placeholder="Chọn phong cách"
+                  style={{ width: "100%" }}
+                  value={product.dress_style}
+                  onChange={(value) => updateField("dress_style", value)}
+                  allowClear
+                >
+                  {dressStyles.map((style) => (
+                    <Option key={style.value} value={style.value}>
+                      {style.label}
+                    </Option>
+                  ))}
+                </Select>
+              </div>
+            </Col>
+          </Row>
 
           <div>
             <label className="block mb-2 font-medium">Hướng dẫn bảo quản</label>
             <TextArea
-              rows={3}
+              rows={4}
               placeholder="Giặt máy nước lạnh, không sử dụng chất tẩy..."
               value={product.care_instructions}
               onChange={(e) => updateField("care_instructions", e.target.value)}
             />
           </div>
-
-          <Divider>Kích thước</Divider>
-          <Row gutter={16}>
-            <Col span={8}>
-              <div>
-                <label className="block mb-2 font-medium">Dài</label>
-                <Input
-                  size="large"
-                  placeholder="70cm"
-                  value={product.dimensions?.length}
-                  onChange={(e) => updateDimension("length", e.target.value)}
-                />
-              </div>
-            </Col>
-            <Col span={8}>
-              <div>
-                <label className="block mb-2 font-medium">Ngực</label>
-                <Input
-                  size="large"
-                  placeholder="50cm"
-                  value={product.dimensions?.chest}
-                  onChange={(e) => updateDimension("chest", e.target.value)}
-                />
-              </div>
-            </Col>
-            <Col span={8}>
-              <div>
-                <label className="block mb-2 font-medium">Vai</label>
-                <Input
-                  size="large"
-                  placeholder="45cm"
-                  value={product.dimensions?.shoulder}
-                  onChange={(e) => updateDimension("shoulder", e.target.value)}
-                />
-              </div>
-            </Col>
-          </Row>
-
-          <Divider>Phong cách</Divider>
-          <Row gutter={16}>
-            <Col span={12}>
-              <div>
-                <label className="block mb-2 font-medium">Tên phong cách</label>
-                <Input
-                  size="large"
-                  placeholder="Casual, Formal..."
-                  value={product.dressStyle?.name}
-                  onChange={(e) =>
-                    updateNestedField("dressStyle", "name", e.target.value)
-                  }
-                />
-              </div>
-            </Col>
-            <Col span={12}>
-              <div>
-                <label className="block mb-2 font-medium">
-                  Slug phong cách
-                </label>
-                <Input
-                  size="large"
-                  placeholder="casual, formal..."
-                  value={product.dressStyle?.slug}
-                  onChange={(e) =>
-                    updateNestedField("dressStyle", "slug", e.target.value)
-                  }
-                />
-              </div>
-            </Col>
-          </Row>
         </div>
       ),
     },
@@ -600,9 +615,7 @@ const ProductCreateForm = () => {
 
           <div className="mt-4 p-4 bg-blue-50 rounded">
             <Text type="secondary">
-              💡 <strong>Tip:</strong> Bạn có thể thêm biến thể sau khi tạo sản
-              phẩm. Giá của biến thể sẽ mặc định bằng giá sản phẩm nếu không
-              chỉnh sửa.
+              <strong>Tip:</strong> Giá của biến thể sẽ mặc định bằng giá sản phẩm nếu không chỉnh sửa.
             </Text>
           </div>
         </div>
@@ -676,8 +689,7 @@ const ProductCreateForm = () => {
           {product.images.length === 0 && (
             <div className="mt-4 p-4 bg-yellow-50 rounded">
               <Text type="warning">
-                ⚠️ Sản phẩm chưa có hình ảnh. Bạn có thể thêm ảnh sau khi tạo
-                sản phẩm.
+                ⚠️ Sản phẩm chưa có hình ảnh. Bạn có thể thêm ảnh sau khi tạo sản phẩm.
               </Text>
             </div>
           )}
@@ -685,6 +697,14 @@ const ProductCreateForm = () => {
       ),
     },
   ];
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Text>Đang tải dữ liệu...</Text>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">

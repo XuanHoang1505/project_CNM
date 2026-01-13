@@ -4,6 +4,7 @@ import { Minus, Plus } from "lucide-react";
 import ProductService from "@/services/site/ProductService";
 import { formatNumber } from "@/utils/Formatter";
 import { COLOR_MAP } from "@/constants/colors";
+import { toast } from "react-toastify";
 
 
 function ProductDetail({ productSlug: propSlug }) {
@@ -21,9 +22,25 @@ function ProductDetail({ productSlug: propSlug }) {
     // Parse product data and ensure all fields are properly formatted
     const parseProductData = (data) => {
         if (!data) return null;
+
+        // 🔥 DEBUG: Xem dữ liệu thật từ API
+        console.log('🔍 Raw API Response:', data);
+        console.log('🔍 Available ID fields:', {
+            id: data.id,
+            _id: data._id,
+            product_id: data.product_id
+        });
+
+        // 🔥 Thử nhiều trường hợp để lấy ID
+        const productId = data.id || data._id || data.product_id || '';
+
+        if (!productId) {
+            console.error('❌ CRITICAL: Product ID is missing from API response!');
+        }
+
         // Extract and format all fields
         return {
-            id: data.id || '',
+            id: productId, // 🔥 Sử dụng ID đã validate
             name: data.name || 'Product Name',
             slug: data.slug || '',
             description: data.description || 'No description available',
@@ -138,6 +155,14 @@ function ProductDetail({ productSlug: propSlug }) {
     };
 
     const handleAddToCart = () => {
+        // 🔥 Validate product ID trước
+        if (!product.id) {
+            console.error('❌ Cannot add to cart: Product ID is missing!');
+            console.log('📦 Current product object:', product);
+            alert('⚠️ Lỗi: Không thể thêm sản phẩm vào giỏ hàng. Vui lòng tải lại trang!');
+            return;
+        }
+
         // Giá ưu tiên lấy từ variant (nếu có)
         const variantPrice = selectedVariant?.price ?? product.price;
 
@@ -152,6 +177,9 @@ function ProductDetail({ productSlug: propSlug }) {
                 color: selectedVariant.color
             } : null
         };
+
+        // 🔥 DEBUG: Kiểm tra cart item trước khi lưu
+        console.log('🛒 Cart item to add:', cartItem);
 
         const existingCart = JSON.parse(localStorage.getItem('cart')) || [];
 
@@ -175,8 +203,12 @@ function ProductDetail({ productSlug: propSlug }) {
         }
 
         localStorage.setItem('cart', JSON.stringify(existingCart));
+        window.dispatchEvent(new Event('cartUpdated'));
 
-        alert("✅ Added to cart!");
+        // 🔥 DEBUG: Xem giỏ hàng sau khi thêm
+        console.log('✅ Updated cart:', existingCart);
+
+        toast.success("Đã thêm sản phẩm vào giỏ hàng")
     };
 
 
@@ -188,6 +220,8 @@ function ProductDetail({ productSlug: propSlug }) {
             </div>
         );
     }
+
+    console.log(product);
 
     const images = product.images || [];
     const currentStock = selectedVariant?.stock || product.stock || 0;
@@ -282,6 +316,7 @@ function ProductDetail({ productSlug: propSlug }) {
                                     </svg>
                                 ))}
                                 <span className="ml-1 text-sm font-medium text-gray-900">
+
                                     {product.stats?.rating_average?.toFixed(1) || '4.5'}/5
                                 </span>
                             </div>

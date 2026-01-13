@@ -55,7 +55,7 @@ function SignUpModal({
       try {
         setIsLoading(true);
         const userData = {
-          fullName: fullName,
+          full_name: fullName,
           email: email,
           password: password,
           password_confirmation: confirmPassword,

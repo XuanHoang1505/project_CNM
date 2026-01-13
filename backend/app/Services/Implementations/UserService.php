@@ -1,5 +1,8 @@
 <?php
 namespace App\Services\Implementations;
+
+use App\Enums\UserRole;
+use App\Enums\UserStatus;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Notifications\SendOtpNotification;
@@ -10,6 +13,7 @@ use App\Repositories\Interfaces\UserRepositoryInterface;
 use App\Services\CloudinaryService;
 use App\Services\OtpService;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 
@@ -37,12 +41,16 @@ class UserService implements UserServiceInterface
     }
 
     public function createUser(array $data)
-    {
+    {   
         $randomPassword = $this->createRandomPassword(8);
         $data['password'] = Hash::make($randomPassword);
-        $data['status'] = 'ACTIVE';
-        $data['role'] = $data['role'] ?? 'USER';
-        $data['isVerified'] = true;
+        $data['status'] = UserStatus::ACTIVE;
+        $data['role'] = $data['role'] ?? UserRole::USER;
+        $data['is_verified'] = true;
+        $data['email_verified_at'] = now();
+        if (array_key_exists('gender', $data)) {
+            $data['gender'] = is_null($data['gender']) ? null : (int)$data['gender'];
+        }
 
         $user = $this->userRepository->create($data);
 
@@ -59,7 +67,10 @@ class UserService implements UserServiceInterface
                 throw new \Exception('Email đã tồn tại');
             }
         }
-
+        if (array_key_exists('gender', $data)) {
+            $data['gender'] = is_null($data['gender']) ? null : (int)$data['gender'];
+        }
+        
         if (isset($data['avatar']) && $data['avatar'] instanceof \Illuminate\Http\UploadedFile) {
             try {
                 // Xóa avatar cũ nếu có
@@ -81,24 +92,22 @@ class UserService implements UserServiceInterface
             } catch (\Exception $e) {
                 throw new \Exception('Upload avatar thất bại: ' . $e->getMessage());
             }
-        } else {
-            // Nếu không upload avatar mới, giữ nguyên avatar cũ
-            unset($data['avatar']);
-        }
-
+            } else {
+                // Nếu không upload avatar mới, giữ nguyên avatar cũ
+                unset($data['avatar']);
+            }
         return $this->userRepository->update($user->id, $data);
     }
-
     public function deleteUser(User $user)
     {
-        return $this->userRepository->delete($user->_id);
+        return $this->userRepository->delete($user->id);
     }
 
     public function register(array $data)
     {
-        $data['isVerified'] = false;
-        $data['role'] = 'USER';
-        $data['status'] = 'ACTIVE';
+        $data['is_verified'] = false;
+        $data['role'] = UserRole::USER;
+        $data['status'] = UserStatus::ACTIVE;
         $data['password'] = Hash::make($data['password']);
 
         $user = $this->userRepository->create($data);
@@ -116,20 +125,6 @@ class UserService implements UserServiceInterface
     {
         $user = $this->userRepository->findByEmail($credentials['email']);
 
-        if($user && $user->status === 'DISABLED') {
-            return [
-                'success' => false,
-                'message' => 'Your account has been disabled. Please contact support.',
-            ];
-        }
-
-        if(!$user->isVerified) {
-            return [
-                'success' => false,
-                'message' => 'Your email is not verified. Please verify your email before logging in.',
-            ];
-        }
-
         if (!$user || !Hash::check($credentials['password'], $user->password)) {
             return [
                 'success' => false,
@@ -137,6 +132,22 @@ class UserService implements UserServiceInterface
             ];
         }
 
+        // Sau đó mới kiểm tra trạng thái
+        if($user->status === UserStatus::INACTIVE) {
+            return [
+                'success' => false,
+                'message' => 'Your account has been disabled. Please contact support.',
+            ];
+        }
+
+        if(!$user->is_verified) {
+            return [
+                'success' => false,
+                'message' => 'Your email is not verified. Please verify your email before logging in.',
+            ];
+        }
+
+        // Tạo token
         $token = JWTAuth::fromUser($user);
 
         return [
@@ -248,7 +259,8 @@ class UserService implements UserServiceInterface
         }
 
         $this->userRepository->update($user->id, [
-            'isVerified' => true
+            'is_verified' => true,
+            'email_verified_at' => now(),
         ]);
 
         $this->otpService->delete($email);
@@ -413,5 +425,92 @@ class UserService implements UserServiceInterface
             'success' => true,
             'message' => 'Đổi mật khẩu thành công',
         ];
+    }
+    public function refreshToken (string $token): array
+    {
+        try {
+            $newToken = JWTAuth::refresh($token);
+
+            return [
+                'success' => true,
+                'message' => 'Token refreshed successfully',
+                'token' => $newToken,
+            ];
+        } catch (\Tymon\JWTAuth\Exceptions\TokenInvalidException $e) {
+            return [
+                'success' => false,
+                'message' => 'Invalid token',
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Could not refresh token: ' . $e->getMessage(),
+            ];
+        }
+    }
+    public function handleSocialLogin(string $provider, object $socialUser): array
+    {
+        try {
+            //Tìm user theo provider và provider_id
+            $user = $this->userRepository->findBySocialProvider($provider, $socialUser->id);
+            
+            if (!$user) {
+                $user = $this->userRepository->findByEmail($socialUser->email);
+                
+                if ($user) {
+                    // Nếu email đã tồn tại, liên kết với social provider
+                    $this->userRepository->update($user->id, [
+                        'provider' => $provider,
+                        'provider_id' => $socialUser->id,
+                        'avatar' => $socialUser->avatar ?? $user->avatar,
+                    ]);
+                    
+                    $user->refresh();
+                    
+                } else {
+                    $user = $this->userRepository->create([
+                        'full_name' => $socialUser->name,
+                        'email' => $socialUser->email,
+                        'avatar' => $socialUser->avatar,
+                        'provider' => $provider,
+                        'provider_id' => $socialUser->id,
+                        'is_verified' => true,
+                        'email_verified_at' => now(),
+                        'role' => UserRole::USER,
+                        'status' => UserStatus::ACTIVE,
+                        'password' => null,
+                    ]);
+                }
+            } else {
+                $this->userRepository->update($user->id, [
+                    'avatar' => $socialUser->avatar ?? $user->avatar,
+                    'full_name' => $socialUser->name ?? $user->full_name,
+                ]);
+                
+                $user->refresh();
+            }
+            
+            if ($user->status === UserStatus::INACTIVE) {
+                return [
+                    'success' => false,
+                    'message' => 'Tài khoản của bạn đã bị vô hiệu hóa',
+                ];
+            }
+            
+            $token = JWTAuth::fromUser($user);
+            
+            return [
+                'success' => true,
+                'message' => 'Đăng nhập thành công',
+                'user' => new UserResource($user),
+                'token' => $token,
+            ];
+            
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'message' => 'Lỗi: ' . $e->getMessage(),
+            ];
+        }
     }
 }

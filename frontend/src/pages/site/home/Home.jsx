@@ -82,13 +82,12 @@ function Home() {
     return [...Array(5)].map((_, i) => (
       <Star
         key={i}
-        className={`w-4 h-4 ${
-          i < Math.floor(rating)
-            ? "fill-yellow-400 text-yellow-400"
-            : i < rating
+        className={`w-4 h-4 ${i < Math.floor(rating)
+          ? "fill-yellow-400 text-yellow-400"
+          : i < rating
             ? "fill-yellow-400 text-yellow-400"
             : "text-gray-300"
-        }`}
+          }`}
       />
     ));
   };
@@ -101,12 +100,12 @@ function Home() {
     >
       <div className="relative h-64 overflow-hidden bg-gray-100">
         <img
-          src={product.images[0]}
+          src={
+            product.main_image ||
+            "https://via.placeholder.com/300x400?text=No+Image"
+          }
           alt={product.name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-          onError={(e) => {
-            e.target.src = "https://via.placeholder.com/300x400?text=No+Image";
-          }}
         />
       </div>
       <div className="p-4">
@@ -131,7 +130,7 @@ function Home() {
                 {Math.round(
                   ((product.compare_price - product.price) /
                     product.compare_price) *
-                    100
+                  100
                 )}
                 %
               </span>

@@ -171,7 +171,7 @@ function SearchPage() {
                     >
                       <div className="aspect-square bg-gray-100 overflow-hidden">
                         <img
-                          src={product.images?.[0] || "/placeholder.jpg"}
+                          src={product.main_image || "/placeholder.jpg"}
                           alt={product.name}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />

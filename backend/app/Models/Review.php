@@ -2,50 +2,40 @@
 
 namespace App\Models;
 
-use MongoDB\Laravel\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model;
 
 class Review extends Model
 {
-    protected $connection = 'mongodb';
-    protected $collection = 'reviews';
-    protected $primaryKey = '_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $table = 'reviews';
 
     protected $fillable = [
-        'product_id',      // ObjectId
+        'product_id',
         'order_id',
-        'user_id',         // ObjectId
-        'rating',          // int
-        'content',         // string
-        'images',          // array
+        'user_id',
+        'rating',
+        'content',
+        'images',
     ];
 
     protected $casts = [
-        'product_id' => 'string',
-        'order_id'   => 'string',
-        'user_id'    => 'string',
-        'images'     => 'array',
-        'rating'     => 'integer',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
+        'images' => 'array',
+        'rating' => 'integer',
     ];
 
-    public $timestamps = true;
+    /* ================= RELATIONSHIPS ================= */
 
-    /**
-     * Quan hệ: Review thuộc về 1 Product
-     */
     public function product()
     {
-        return $this->belongsTo(Product::class, '_id', 'product_id');
+        return $this->belongsTo(Product::class);
     }
 
-    /**
-     * Quan hệ: Review thuộc về 1 User (nếu có model User)
-     */
+    public function order()
+    {
+        return $this->belongsTo(Order::class);
+    }
+
     public function user()
     {
-        return $this->belongsTo(User::class, '_id', 'user_id');
+        return $this->belongsTo(User::class);
     }
 }

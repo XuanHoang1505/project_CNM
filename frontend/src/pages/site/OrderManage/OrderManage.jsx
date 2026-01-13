@@ -18,8 +18,6 @@ function OrderManagement() {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [selectedProduct, setSelectedProduct] = useState(null);
 
-
-
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -37,29 +35,12 @@ function OrderManagement() {
             const userDetail = JSON.parse(userDetailStr);
             if (!userDetail.email) throw new Error('Email không hợp lệ.');
 
-            // Lấy dữ liệu từ API
+            // 🔥 Lấy dữ liệu từ API - MySQL trả về orders trực tiếp
             const response = await OrderService.getOrdersByEmail(userDetail.email);
 
-            // map lại dữ liệu để phù hợp component
-            const mappedOrders = response.orders.map(order => ({
-                id: order.id,
-                orderCode: order.order_code,
-                customer: order.customer_info,
-                address: order.shipping_address,
-                items: order.items,
-                payment: {
-                    amount: order.total,
-                    method: order.payment_method
-                },
-                status: order.order_status,
-                subtotal: order.subtotal,
-                discount: order.discount,
-                deliveryFee: order.delivery_fee,
-                note: order.note,
-                createdAt: order.created_at
-            }));
-
-            setOrders(mappedOrders);
+            // 🔥 Không cần map lại vì MySQL đã trả về đúng format
+            // Chỉ cần gán trực tiếp
+            setOrders(response.orders || response || []);
 
         } catch (err) {
             console.error('Error fetching orders:', err);
@@ -69,9 +50,8 @@ function OrderManagement() {
         }
     };
 
-
     const formatNumber = (num) => {
-        return new Intl.NumberFormat('vi-VN').format(num);
+        return new Intl.NumberFormat('vi-VN').format(num || 0);
     };
 
     const formatDate = (dateString) => {
@@ -99,13 +79,11 @@ function OrderManagement() {
         const methods = {
             cod: 'Thanh toán khi nhận hàng',
             card: 'Thẻ tín dụng/Ghi nợ',
-            bank: 'VNPAY'
+            vnpay: 'VNPAY',
+            bank: 'Chuyển khoản ngân hàng'
         };
         return methods[method] || method;
     };
-
-    
-
 
     const toggleOrder = (orderId) => {
         setExpandedOrder(expandedOrder === orderId ? null : orderId);
@@ -113,25 +91,26 @@ function OrderManagement() {
 
     const updateOrderStatus = (orderId, newStatus) => {
         setOrders(orders.map(order =>
-            order.id === orderId ? { ...order, status: newStatus } : order
+            order.id === orderId ? { ...order, order_status: newStatus } : order
         ));
     };
 
     const filteredOrders = orders.filter(order => {
-        const matchesStatus = filterStatus === 'all' || order.status === filterStatus;
+        // 🔥 FIX: order.status → order.order_status
+        const matchesStatus = filterStatus === 'all' || order.order_status === filterStatus;
         const matchesSearch = searchQuery === '' ||
-            order.orderCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            order.customer.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            order.customer.phone.includes(searchQuery);
+            order.order_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            order.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            order.phone.includes(searchQuery);
         return matchesStatus && matchesSearch;
     });
 
     const statusCounts = {
         all: orders.length,
-        pending: orders.filter(o => o.status === 'pending').length,
-        confirmed: orders.filter(o => o.status === 'confirmed').length,
-        completed: orders.filter(o => o.status === 'completed').length,
-        cancelled: orders.filter(o => o.status === 'cancelled').length
+        pending: orders.filter(o => o.order_status === 'pending').length,
+        confirmed: orders.filter(o => o.order_status === 'confirmed').length,
+        completed: orders.filter(o => o.order_status === 'completed').length,
+        cancelled: orders.filter(o => o.order_status === 'cancelled').length
     };
 
     // Loading state
@@ -293,14 +272,17 @@ function OrderManagement() {
                                         <div className="flex items-center gap-4">
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
-                                                    <span className="font-bold text-lg">{order.orderCode}</span>
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.status)}`}>
-                                                        {order.status}
+                                                    {/* 🔥 FIX: order.orderCode → order.order_code */}
+                                                    <span className="font-bold text-lg">{order.order_code}</span>
+                                                    {/* 🔥 FIX: order.status → order.order_status */}
+                                                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(order.order_status)}`}>
+                                                        {order.order_status}
                                                     </span>
                                                 </div>
                                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                                     <Calendar size={14} />
-                                                    <span>{formatDate(order.createdAt)}</span>
+                                                    {/* 🔥 FIX: order.createdAt → order.created_at */}
+                                                    <span>{formatDate(order.created_at)}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -308,7 +290,8 @@ function OrderManagement() {
                                         <div className="flex items-center gap-3">
                                             <div className="text-right">
                                                 <div className="text-sm text-gray-600">Tổng tiền</div>
-                                                <div className="font-bold text-lg">{formatNumber(order.payment.amount)} đ</div>
+                                                {/* 🔥 FIX: order.payment.amount → order.total */}
+                                                <div className="font-bold text-lg">{formatNumber(order.total)} đ</div>
                                             </div>
                                             <button
                                                 onClick={() => toggleOrder(order.id)}
@@ -333,15 +316,15 @@ function OrderManagement() {
                                                 <div className="space-y-2 text-sm">
                                                     <div>
                                                         <span className="text-gray-600">Tên:</span>{' '}
-                                                        <span className="font-medium">{order.customer.fullName}</span>
+                                                        <span className="font-medium">{order.full_name}</span>
                                                     </div>
                                                     <div>
                                                         <span className="text-gray-600">Email:</span>{' '}
-                                                        <span className="font-medium">{order.customer.email}</span>
+                                                        <span className="font-medium">{order.email}</span>
                                                     </div>
                                                     <div>
                                                         <span className="text-gray-600">SĐT:</span>{' '}
-                                                        <span className="font-medium">{order.customer.phone}</span>
+                                                        <span className="font-medium">{order.phone}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -353,11 +336,12 @@ function OrderManagement() {
                                                     <h4 className="font-bold">Địa chỉ giao hàng</h4>
                                                 </div>
                                                 <div className="text-sm">
-                                                    <p className="font-medium">{order.address.houseNumber}</p>
-                                                    <p className="text-gray-600">{order.address.ward}, {order.address.province}</p>
-                                                    {order.address.note && (
+                                                    {/* 🔥 FIX: order.address → các column riêng */}
+                                                    <p className="font-medium">{order.house_number}</p>
+                                                    <p className="text-gray-600">{order.ward}, {order.province}</p>
+                                                    {order.note && (
                                                         <p className="text-gray-600 mt-2">
-                                                            <span className="font-medium">Ghi chú:</span> {order.address.note}
+                                                            <span className="font-medium">Ghi chú:</span> {order.note}
                                                         </p>
                                                     )}
                                                 </div>
@@ -368,26 +352,37 @@ function OrderManagement() {
                                         <div className="mb-6">
                                             <h4 className="font-bold mb-4">Sản phẩm đã đặt</h4>
                                             <div className="space-y-3">
-                                                {order.items.map((item, index) => (
-                                                    <div key={index} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
-                                                        <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
-                                                            {item.image && (
-                                                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                                                            )}
-                                                        </div>
-                                                        <div className="flex-1">
-                                                            <h5 className="font-medium">{item.name}</h5>
-                                                            <p className="text-sm text-gray-600">
-                                                                {item.size && `Size: ${item.size}`}
-                                                                {item.color && ` • ${item.color}`}
-                                                            </p>
-                                                            <div className="flex justify-between items-center mt-1">
-                                                                <span className="text-sm text-gray-600">Số lượng: {item.quantity}</span>
-                                                                <span className="font-semibold">{formatNumber(item.price * item.quantity)} đ</span>
+                                                {/* 🔥 FIX: Thêm check items tồn tại */}
+                                                {order.items && order.items.length > 0 ? (
+                                                    order.items.map((item) => (
+                                                        // 🔥 FIX: key={index} → key={item.id}
+                                                        <div key={item.id} className="flex gap-3 p-3 bg-gray-50 rounded-lg">
+                                                            <div className="w-16 h-16 bg-gray-200 rounded-lg flex-shrink-0 overflow-hidden">
+                                                                {item.image && (
+                                                                    // 🔥 FIX: item.name → item.product_name
+                                                                    <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />
+                                                                )}
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                {/* 🔥 FIX: item.name → item.product_name */}
+                                                                <h5 className="font-medium">{item.product_name}</h5>
+                                                                <p className="text-sm text-gray-600">
+                                                                    {item.size && `Size: ${item.size}`}
+                                                                    {item.color && ` • ${item.color}`}
+                                                                </p>
+                                                                <div className="flex justify-between items-center mt-1">
+                                                                    <span className="text-sm text-gray-600">Số lượng: {item.quantity}</span>
+                                                                    {/* 🔥 FIX: Dùng item.total */}
+                                                                    <span className="font-semibold">
+                                                                        {formatNumber(item.total || (item.price * item.quantity))} đ
+                                                                    </span>
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    ))
+                                                ) : (
+                                                    <p className="text-gray-500 text-sm">Không có sản phẩm</p>
+                                                )}
                                             </div>
                                         </div>
 
@@ -399,7 +394,23 @@ function OrderManagement() {
                                                         <CreditCard size={18} className="text-gray-700" />
                                                         <h4 className="font-bold">Thanh toán</h4>
                                                     </div>
-                                                    <p className="text-sm text-gray-600">{getPaymentMethodText(order.payment.method)}</p>
+                                                    {/* 🔥 FIX: order.payment.method → order.payment_method */}
+                                                    <p className="text-sm text-gray-600">
+                                                        {getPaymentMethodText(order.payment_method)}
+                                                    </p>
+                                                    {/* 🔥 THÊM: Hiển thị trạng thái thanh toán */}
+                                                    <p className="text-sm mt-2">
+                                                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${order.payment_status === 'paid'
+                                                            ? 'bg-green-100 text-green-800'
+                                                            : order.payment_status === 'failed'
+                                                                ? 'bg-red-100 text-red-800'
+                                                                : 'bg-yellow-100 text-yellow-800'
+                                                            }`}>
+                                                            {order.payment_status === 'paid' ? 'Đã thanh toán' :
+                                                                order.payment_status === 'failed' ? 'Thanh toán thất bại' :
+                                                                    'Chờ thanh toán'}
+                                                        </span>
+                                                    </p>
                                                 </div>
 
                                                 <div className="space-y-2">
@@ -415,19 +426,52 @@ function OrderManagement() {
                                                     )}
                                                     <div className="flex justify-between text-sm">
                                                         <span className="text-gray-600">Phí vận chuyển:</span>
-                                                        <span className="font-medium">{formatNumber(order.deliveryFee)} đ</span>
+                                                        {/* 🔥 FIX: order.deliveryFee → order.delivery_fee */}
+                                                        <span className="font-medium">{formatNumber(order.delivery_fee)} đ</span>
                                                     </div>
                                                     <div className="flex justify-between pt-2 border-t">
                                                         <span className="font-bold">Tổng cộng:</span>
-                                                        <span className="font-bold text-lg">{formatNumber(order.payment.amount)} đ</span>
+                                                        {/* 🔥 FIX: order.payment.amount → order.total */}
+                                                        <span className="font-bold text-lg">{formatNumber(order.total)} đ</span>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
+                                        {/* 🔥 THÊM: Thông tin VNPAY (nếu có) */}
+                                        {order.payment && order.payment_method === 'vnpay' && (
+                                            <div className="mt-6 border-t pt-4">
+                                                <h4 className="font-bold mb-3">Thông tin giao dịch VNPAY</h4>
+                                                <div className="grid md:grid-cols-2 gap-4 text-sm bg-gray-50 p-4 rounded-lg">
+                                                    <div>
+                                                        <span className="text-gray-600">Mã giao dịch:</span>{' '}
+                                                        <span className="font-medium">{order.payment.transaction_no || 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-600">Ngân hàng:</span>{' '}
+                                                        <span className="font-medium">{order.payment.bank_code || 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-600">Loại thẻ:</span>{' '}
+                                                        <span className="font-medium">{order.payment.card_type || 'N/A'}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-600">Ngày thanh toán:</span>{' '}
+                                                        <span className="font-medium">
+                                                            {order.payment.pay_date
+                                                                ? formatDate(order.payment.pay_date)
+                                                                : 'N/A'
+                                                            }
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         {/* Action Buttons */}
                                         <div className="flex gap-3 mt-6 pt-6 border-t">
-                                            {order.status === 'pending' && (
+                                            {/* 🔥 FIX: order.status → order.order_status */}
+                                            {order.order_status === 'pending' && (
                                                 <>
                                                     <button
                                                         onClick={() => updateOrderStatus(order.id, 'confirmed')}
@@ -444,7 +488,7 @@ function OrderManagement() {
                                                 </>
                                             )}
 
-                                            {order.status === 'confirmed' && (
+                                            {order.order_status === 'confirmed' && (
                                                 <button
                                                     disabled
                                                     className="flex-1 bg-blue-100 text-blue-600 py-3 rounded-lg font-medium cursor-not-allowed"
@@ -453,7 +497,7 @@ function OrderManagement() {
                                                 </button>
                                             )}
 
-                                            {order.status === 'completed' && (
+                                            {order.order_status === 'completed' && (
                                                 <>
                                                     <button
                                                         disabled
@@ -471,7 +515,7 @@ function OrderManagement() {
                                                 </>
                                             )}
 
-                                            {order.status === 'cancelled' && (
+                                            {order.order_status === 'cancelled' && (
                                                 <button
                                                     disabled
                                                     className="flex-1 bg-gray-200 text-gray-500 py-3 rounded-lg font-medium cursor-not-allowed"
@@ -488,13 +532,13 @@ function OrderManagement() {
                 </div>
             </div>
 
-
             {/* Product Selection Modal */}
             <Modal
                 title={
                     <div>
                         <h3 className="text-xl font-bold">Chọn sản phẩm để đánh giá</h3>
-                        <p className="text-sm text-gray-600 mt-1">Đơn hàng: {selectedOrder?.orderCode || '—'}</p>
+                        {/* 🔥 FIX: selectedOrder?.orderCode → selectedOrder?.order_code */}
+                        <p className="text-sm text-gray-600 mt-1">Đơn hàng: {selectedOrder?.order_code || '—'}</p>
                     </div>
                 }
                 open={showProductModal}
@@ -550,7 +594,8 @@ function OrderManagement() {
                                 {/* Product Image */}
                                 <div className="w-20 h-20 bg-gray-200 rounded-md overflow-hidden mr-4 flex-shrink-0">
                                     {item.image ? (
-                                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                                        // 🔥 FIX: item.name → item.product_name
+                                        <img src={item.image} alt={item.product_name} className="w-full h-full object-cover" />
                                     ) : (
                                         <div className="w-full h-full flex items-center justify-center text-xs text-gray-500">No image</div>
                                     )}
@@ -558,16 +603,21 @@ function OrderManagement() {
 
                                 {/* Product Info */}
                                 <div className="flex-1">
-                                    <h5 className="font-medium text-lg">{item.name || 'Sản phẩm'}</h5>
+                                    {/* 🔥 FIX: item.name → item.product_name */}
+                                    <h5 className="font-medium text-lg">{item.product_name || 'Sản phẩm'}</h5>
 
                                     <p className="text-sm text-gray-600 mt-1">
                                         {item.size && `Size: ${item.size}`}
                                         {item.color && ` • ${item.color}`}
                                     </p>
 
-                                    <div className="flex justify-between items-center mt-2">
+                                    <div className="flex justify-between
+                                    items-center mt-2">
                                         <span className="text-sm text-gray-600">Số lượng: {item.quantity ?? 1}</span>
-                                        <span className="font-semibold text-yellow-600">{formatNumber((item.price ?? 0) * (item.quantity ?? 1))} đ</span>
+                                        {/* 🔥 FIX: Dùng item.total */}
+                                        <span className="font-semibold text-yellow-600">
+                                            {formatNumber(item.total || (item.price * item.quantity))} đ
+                                        </span>
                                     </div>
                                 </div>
                             </label>
@@ -575,10 +625,7 @@ function OrderManagement() {
                     })}
                 </div>
             </Modal>
-
-
         </div>
     );
 }
-
 export default OrderManagement;
